@@ -11,8 +11,7 @@
 #include <sys/wait.h>
 #include <signal.h>
 #include "commands.h"
-
-//#include "signals.h"
+#include "signals.h"
 
 #define CMD_LENGTH_MAX  80
 #define MAX_ARGS        20
@@ -109,7 +108,7 @@ int handle_builtin(Command *cmd) {
             handle_builtin(cmd);
             exit(0);
         } else {
-            add_job(pid, cmd->args[0], JOB_RUNNING); // to be implemented
+            add_job(pid, cmd->args[0], JOB_RUNNING); //TODO: check success?
             return 1;
         }
     }
@@ -173,10 +172,16 @@ int handle_builtin(Command *cmd) {
         return diff(cmd->args[1], cmd->args[2]);
 
     } else if (strcmp(cmd->args[0], "quit") == 0) {
-		if (cmd->nargs > 2 || (cmd->nargs == 2 && strcmp(cmd->args[1], "kill") != 0)) {
+		if (cmd->nargs > 2 || cmd->nargs == 2) {
             fprintf(stderr, "smash error: quit: expected 0 or 1 arguments\n");
             return 1;
         }
+
+		else if(strcmp(cmd->args[1], "kill") != 0) {
+            fprintf(stderr, "smash error: quit: unexpected arguments\n");
+            return 1;
+        }
+
         return quit();
     }
 
@@ -221,7 +226,8 @@ void launch_external(Command *cmd) {
  /*=============================================================================
   * main function
   *=============================================================================*/
- 
+//TODO: take care of ctrl C and ctrl Z!!!!!!!!!!!!!! calling ctrl C and Z handler
+// also make sure smash prints  prompt after  ctrl C and  Z
 int main(int argc, char* argv[])
  {
 	 Command cmd;
@@ -253,7 +259,7 @@ int main(int argc, char* argv[])
  
 		 //4) execute/dispatch 
 		 if (!handle_builtin(&cmd)) 
-			launch_external(&cmd);/*Forks and runs external programs (e.g. ls, sleep)*/
+			launch_external(&cmd); //Forks and runs external programs (e.g. ls, sleep)
 
 		 // 5) update job list, reap finished, etc. (to implement)
 		 update_jobs(); 
