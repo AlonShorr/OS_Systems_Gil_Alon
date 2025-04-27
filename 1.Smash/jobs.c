@@ -6,16 +6,8 @@
 
 #include "jobs.h"
 
-/**
- * @param jobs_arr a program global array that holds the jobs queue. The array
- * indexes 0 for an empty spot. For an index containing a job job_id == it's index  
- * in the array.
- */
-job jobs_arr[MAX_JOBS];
 
-/**
- * @param jobs_nums: global number of jobs currently processed.
- */
+job jobs_arr[MAX_JOBS];
 int jobs_num = 0;
 
 /*=============================================================================
@@ -49,19 +41,20 @@ int add_job(int pid, const char *cmd_line, int status) {
     if (index == ERROR)
         return ERROR;
     
-    job* new = (job*)arr[index];
+    job* new_job = &jobs_arr[index];
     
-    new.job_id = index;
-    new.pid = pid;
-    new.cmd_line = (char*)malloc(sizeof(char)*(strlen(cmd_line) + 1));
-    strcpy(new.cmd_line, cmd_line);
-    new.start_time = /*insert current clock time*/; //TODO
-    new.seconds_elapsed = /*0? figure this out*/; 
-    new.status = status;
+    new_job->cmd_line = (char*)malloc(sizeof(char)*(strlen(cmd_line) + 1));
+    if(!new_job->cmd_line) return ERROR;
+    strcpy(new_job.cmd_line, cmd_line);
+    new_job->job_id = index;
+    new_job->pid = pid;
+    new_job->start_time = time(NULL); //TODO: check if it works good
+    new_job->seconds_elapsed = 0;
+    new_job->status = status;
 
     jobs_num++;
 
-    return job_id; //on Success
+    return index; //on Success
 }
 
  void remove_job(int job_id) {
@@ -70,10 +63,15 @@ int add_job(int pid, const char *cmd_line, int status) {
     else if (jobs_arr[job_id].pid == 0) 
         return;  
 
-    job *job = jobs_arr[job_id];
-    free(job->cmd_line);
-    memset(job, 0, sizeof(job));
+    job *job = &jobs_arr[job_id];
+    if(job->cmd_line)
+        free(job->cmd_line);
+    memset(job, 0, sizeof(*job));
 
     jobs_num--;
 }
 
+void print_job()
+
+//TODO TIME MANAGMENT 
+//PRINT FUNCTION FOR ONE JOB ELEMNT!!!!!!!!!!!!!!!!!!!!!!! print_job

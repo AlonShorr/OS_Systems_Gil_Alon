@@ -10,16 +10,12 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include <stdbool.h>
-#include <string.h>
-#include <unistd.h>
-#include <sys/types.h>
 #include <signal.h>
 #include <time.h>
 #include "commands.h"
 #include "signals.h"
 
-
+#define ERROR -1
 #define MAX_JOBS 100
 #define JOB_RUNNING_FG 0
 #define JOB_RUNNING_BG 1
@@ -38,8 +34,16 @@ typedef struct {
     int status;
 }job;
 
-
+/**
+ * @param jobs_arr a program global array that holds the jobs queue. The array
+ * indexes pid == 0 for an empty spot. For an index containing a job job_id == it's index  
+ * in the array.
+ */
 extern job jobs_arr[MAX_JOBS];
+
+/**
+ * @param jobs_nums: global number of jobs currently processed.
+ */
 extern int jobs_num;
 
 /*=============================================================================
@@ -56,7 +60,7 @@ void init_jobs();
  * @param pid: System process PID.
  * @param cmd_line: cmd line NOT PARSED.
  * @param status: runnig fg / bg, stopped.
- * @return returns ERROR on fail, 0 on Success
+ * @return returns ERROR on fail, new slot index on success
  */
 int add_job(int pid, const char *cmd_line, int status);
 
