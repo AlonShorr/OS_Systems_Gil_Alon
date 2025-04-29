@@ -35,6 +35,13 @@ typedef struct {
 char _line[CMD_LENGTH_MAX];
 char _cmd[CMD_LENGTH_MAX];
 
+/**
+ * @brief global variable to hold the current foreground process ID and command line.
+ */
+int fg_pid = -1;           // current foreground PID
+char fg_cmd_line[CMD_MAX];   // copy of the command
+time_t fg_start_time;        // for elapsed time
+
 /*=============================================================================
 * Functions
 =============================================================================*/
@@ -143,69 +150,90 @@ int handle_builtin(Command *cmd) {
 		}
 		return showpid();
 
-    } else if (strcmp(cmd->args[0], "pwd") == 0) {
+    } 
+	else if (strcmp(cmd->args[0], "pwd") == 0) {
 		if(cmd->nargs != 1) {
 			fprintf(stderr, "smash error: pwd: expected 0 arguments\n");
 			return 1;
 		}
         return pwd();
 
-    } else if (strcmp(cmd->args[0], "cd") == 0) {
+    } 
+	else if (strcmp(cmd->args[0], "cd") == 0) {
         if (cmd->nargs != 2) {
             fprintf(stderr, "smash error: cd: expected 1 arguments\n");
             return 1;
         }
         return cd(cmd->args[1]);
 
-    } else if (strcmp(cmd->args[0], "jobs") == 0) {
+    } 
+	else if (strcmp(cmd->args[0], "jobs") == 0) {
 		if(cmd->nargs != 1) {
 			fprintf(stderr, "smash error: jobs: expected 0 arguments\n");
 			return 1;
 		}
         return jobs();
 
-    } else if (strcmp(cmd->args[0], "kill") == 0) {
+    } 
+	else if (strcmp(cmd->args[0], "kill") == 0) {
         if (cmd->nargs != 3) {
             fprintf(stderr, "smash error: kill: invalid arguments\n");
             return 1;
         }
         int signum = atoi(cmd->args[1]);
         int job_pid = atoi(cmd->args[2]);
-        return kill(signum, job_pid); //TODO: tell gil to change it to smash kill for conflict solving
+        return smash_kill(signum, job_pid); 
 
-    } else if (strcmp(cmd->args[0], "fg") == 0) {
-        if (cmd->nargs != 2) {
+    } 
+	else if (strcmp(cmd->args[0], "fg") == 0) {
+        if (cmd->nargs > 2) {
             fprintf(stderr, "smash error: fg: invalid arguments\n");
             return 1;
         }
-        return fg(cmd->args[1]);
+        else if(cmd->nargs == 2)	
+			return fg(cmd->args[1]);
+		else if(cmd->nargs == 1)
+			return empty_fg(); 
 
-    } else if (strcmp(cmd->args[0], "bg") == 0) {
+	} 
+	else if (strcmp(cmd->args[0], "bg") == 0) {
+		if (cmd->nargs > 2) {
+			fprintf(stderr, "smash error: bg: invalid arguments\n");
+			return 1;
+		else if(cmd->nargs == 2)	
+			return bg(cmd->args[1]);
+		else if(cmd->nargs == 1)
+			return empty_bg(); 
+
+    } 
+	else if (strcmp(cmd->args[0], "bg") == 0) {
         if (cmd->nargs != 2) {
             fprintf(stderr, "smash error: bg: invalid arguments\n");
             return 1;
         }
         return bg(cmd->args[1]);
 
-    } else if (strcmp(cmd->args[0], "diff") == 0) {
+    } 
+	else if (strcmp(cmd->args[0], "diff") == 0) {
         if (cmd->nargs != 3) {
             fprintf(stderr, "smash error: diff: expected 2 arguments\n");
             return 1;
         }
         return diff(cmd->args[1], cmd->args[2]);
 
-    } else if (strcmp(cmd->args[0], "quit") == 0) {
+    } 
+	else if (strcmp(cmd->args[0], "quit") == 0) {
 		if (cmd->nargs > 2 || cmd->nargs == 2) {
             fprintf(stderr, "smash error: quit: expected 0 or 1 arguments\n");
             return 1;
         }
 
-		else if(strcmp(cmd->args[1], "kill") != 0) {
+		else if(cmd->nargs == 2 && strcmp(cmd->args[1], "kill") != 0) {
             fprintf(stderr, "smash error: quit: unexpected arguments\n");
             return 1;
         }
 
-        return quit();
+        return (cmd->nargs == 1) ? quit() : quit_kill(); //quit with or without kill
     }
 
     return 0; // not a built-in
@@ -232,6 +260,9 @@ void launch_external(Command *cmd) {
 		else {
 			int status;
 			if(!cmd->bg) {
+				fg_pid = pid; //set fg pid to the new process
+				strcpy(fg_cmd_line, cmd->args[0]); //copy the command line to fg_cmd_line
+				fg_start_time = time(NULL); //set the start time to now	
 				waitpid(pid, &status, WUNTRACED);
 				if (WIFSTOPPED(status)) { //macro to indicate if the child was stopped
 					add_job(pid, cmd->args[0], JOB_STOPPED); 

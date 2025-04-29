@@ -19,9 +19,6 @@
 
 #define ERROR -1
 #define MAX_JOBS 100
-#define JOB_RUNNING_FG 0
-#define JOB_RUNNING_BG 1
-#define JOB_STOPPED 2
 
 /*=============================================================================
 * global variables & data structures
@@ -50,6 +47,15 @@ extern int jobs_num;
 /*=============================================================================
 * Function Declarations
 =============================================================================*/
+/**
+ * @brief returns the job id of a given pid.
+ */
+int get_id (int pid);
+
+/**
+ * @brief returns the job pid of a given id.
+ */
+ int get_pid (int job_id);
 
 /**
  * @brief initializes jobs queue (implemented as an array).

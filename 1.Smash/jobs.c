@@ -32,15 +32,22 @@ int next_free_index() {
     return ERROR;
 }
 
-/**
- * @brief returns the job id of a given pid.
- */
 int get_id (int pid) {
     for(int i=0; i < MAX_JOBS; i++) {
         if (jobs_arr[i].pid == pid)  
             return i;
     }
     return ERROR;
+}
+
+
+int get_pid (int job_id) {
+    if (job_id < 0 || job_id >= MAX_JOBS) 
+        return ERROR;
+    else if (jobs_arr[job_id].pid == 0) 
+        return ERROR;  
+
+    return jobs_arr[job_id].pid;
 }
 
 void init_jobs() {
@@ -104,7 +111,7 @@ void print_job(int job_id) {
                                    elapsed); 
 }
 
-void  update_job_status(int job_id, int status) {
+void update_job_status(int job_id, int status) {
     if (job_id < 0 || job_id >= MAX_JOBS) 
         return;
     else if (jobs_arr[job_id].pid == 0) 
