@@ -6,18 +6,30 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
-#include <unistd.h>  // for getpid()
+#include <unistd.h> 
 #include <string.h>
 #include <errno.h>
-#include "signal.h"
 #include <sys/stat.h>
 #include <sys/wait.h>
-#include "jobs.h"  // check if this is the correct name alon gave
+#include "signals.h"
+#include "jobs.h"
 //#include <sys/types.h>
 
 #define CMD_LENGTH_MAX 120
 #define ARGS_NUM_MAX 20
+#define ERROR -1
 #define MAX_JOBS 100
+
+#define JOB_RUNNING_FG 0
+#define JOB_RUNNING_BG 1
+#define JOB_STOPPED 2
+#define PATH_MAX 4096
+
+#define SMASH_SUCCESS 0
+#define SMASH_FAIL 1
+#define SMASH_ERROR 2
+
+
 
 /*=============================================================================
 * error handling - some useful macros and examples of error handling,
@@ -68,7 +80,7 @@ int showpid();
 int pwd();
 int cd(char* path);
 int jobs();
-int smash_kill(int signum, char* job_id);
+int kill(int signum, char* job_id);
 int fg(char* job_id);
 int bg(char* job_id);
 int diff(char* file1, char* file2);
@@ -76,6 +88,7 @@ int quit();
 
 // helper functions
 
+int str_to_int(char* str)
 
 
 
