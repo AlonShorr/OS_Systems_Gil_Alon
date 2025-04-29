@@ -6,14 +6,16 @@
 /*=============================================================================
 * includes, defines, usings
 =============================================================================*/
-
-#include <stdio.h>
+#include <stdio.h>    
+#include <stdlib.h>   
 #include <string.h>
-#include <stdlib.h>
-#include <signal.h>
-#include <time.h>
-#include "commands.h"
+#include <sys/wait.h> 
+#include <time.h>     
+
+/* is needed?
+#include "commands.h" 
 #include "signals.h"
+*/
 
 #define ERROR -1
 #define MAX_JOBS 100
@@ -30,7 +32,6 @@ typedef struct {
     int pid;
     char* cmd_line;
     time_t start_time;
-    time_t seconds_elapsed;
     int status;
 }job;
 
@@ -72,51 +73,31 @@ int add_job(int pid, const char *cmd_line, int status);
  */
 void remove_job(int job_id);
 
-int get_job_id_by_pid(int pid);
+/**
+ * @brief: updates a single job status in the jobs array.
+ * @param job_id: the job id to update.
+ * @param status: the new status to set.
+ */
+void update_job_status(int job_id, int status);
 
-job *find_job_by_id(int job_id);
+/**
+ * @brief: updates all jobs in the jobs array. if a job has finished it will be removed from the array.
+ * if a job has stopped it will be updated to JOB_STOPPED, and if a job has continued it will be updated to JOB_RUNNING_BG.
+ */
+void update_jobs();
 
-job *find_job_by_pid(int pid);
+/**
+ * @brief: prints a job in the format: [<job id>] <command>: <process id> <seconds elapsed>
+ * @note: adds (stopped) to the end of the line if the job is stopped.
+ * @param job_id: the job id to print.
+ */
+void print_job(int job_id);
 
-void update_job_status(int pid, int status);
-
-void print_jobs();
-
-void remove_finished_jobs();
-
+/**
+ * @brief: zeros the jobs array and sets the number of jobs to 0.
+ * @note: frees the cmd_line of each job in the array since it was dynamically allocated.
+ * @note: this function should be called when the program is exiting to free all the memory allocated for the jobs.
+ */
 void clean_all_jobs();
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 #endif

@@ -12,6 +12,7 @@
 #include <signal.h>
 #include "commands.h"
 #include "signals.h"
+#include "jobs.h"
 
 #define CMD_LENGTH_MAX  80
 #define MAX_ARGS        20
@@ -108,7 +109,7 @@ int handle_builtin(Command *cmd) {
             handle_builtin(cmd);
             exit(0);
         } else {
-            add_job(pid, cmd->args[0], JOB_RUNNING); //TODO: check success?
+            add_job(pid, cmd->args[0], JOB_RUNNING_BG); //TODO: check success?
             return 1;
         }
     }
@@ -190,7 +191,7 @@ int handle_builtin(Command *cmd) {
 
 /**
  * @brief forks external cmds to a child process. if bg than it immidetly moves it
- * to the jobs queue as JOB_RUNNING. else waits for it to finish or if stopped moves
+ * to the jobs queue as JOB_RUNNING_BG. else waits for it to finish or if stopped moves
  * it to the jobs queue as JOB_STOPPED
  * @param cmd: the cmd struct after parsing.
  */
@@ -216,7 +217,7 @@ void launch_external(Command *cmd) {
 				}	//if the process exited or killed to alteration to  jobs required.
             }
 			else if(cmd->bg) {
-			add_job(pid, cmd->args[0], JOB_RUNNING);
+			add_job(pid, cmd->args[0], JOB_RUNNING_BG);
 			//printf("smash: background process %d started (%s)\n", pid, cmd->args[0]); //TODO: any print required?
 			} 
 		}

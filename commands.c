@@ -157,7 +157,7 @@ int cd(char* path)
 int jobs(){
 	for (int i = 0; i < MAX_JOBS; i++) {
 		if (jobs_arr[i]!= NULL) {
-			print_job(jobs_arr[i]);
+			print_job(jobs_arr[i]); //every reference to the array should be according to job id
 		}
 	}
 	return SMASH_SUCCESS;
