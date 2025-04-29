@@ -89,14 +89,14 @@ int cd(char* path)
 		//perhaps need this print instead:     fprintf(stderr, "smash error: cd: expected 1 arguments\n");
 		return SMASH_FAIL;
 	}
-	char curr_cwd[PATH_MAX];
-	if (getcwd(cwd, sizeof(cwd)) == NULL){
+	char curr_cwd[PATH_MAX]; //TODO: unused
+	if (getcwd(cwd, sizeof(cwd)) == NULL){ //TODO: cwd is not defined
 		perror("getcwd() error");
 		return SMASH_ERROR;
 	}
 
 // Handle "cd -"
-	if (strcmp(arg, "-") == 0) {
+	if (strcmp(arg, "-") == 0) { //TODO: arg is not defined
 		if (strlen(prev_path) == 0) {
 			fprintf(stderr, "smash error: cd: old pwd not set");
 			return SMASH_FAIL;
@@ -112,7 +112,7 @@ int cd(char* path)
 	
 	//handle "cd.."
 	else if (strcmp(path, "..") == 0) {
-		if (strcmp(curr_path, "/") == 0) {
+		if (strcmp(curr_path, "/") == 0) { //TODO: curr_path is not defined
 			return SMASH_SUCCESS; //need to see whats going of with prev path - might have a bug here
 		}
 		if (chdir("..") != 0) {
@@ -156,21 +156,21 @@ int cd(char* path)
 //should be fine - not yet tested though
 int jobs(){
 	for (int i = 0; i < MAX_JOBS; i++) {
-		if (jobs_arr[i]!= NULL) {
-			print_job(jobs_arr[i]); //every reference to the array should be according to job id
+		if (jobs_arr[i].pid != 0) {
+			print_job(jobs_arr[i].job_id); //every reference to the array should be according to job id
 		}
 	}
 	return SMASH_SUCCESS;
 }
 
 //should be fine - not yet tested though
-int kill(int signum, char* job_id){
-	int job_index = str_to_int(job_id);
+int smash_kill(int signum, char* job_id){
+	int job_index = str_to_int(job_id); //TODO: implicit declaration
 	if (job_index == -1) {
 		fprintf(stderr, "smash error: kill: invalid arguments\n");
 		return SMASH_FAIL;
 	}
-	if (jobs_arr[job_index] == NULL) {
+	if (jobs_arr[job_index].pid == 0) {
 		fprintf(stderr, "smash error: kill: job id %d does not exist\n", job_index);
 		return SMASH_FAIL;	//perhaps need to be SMASH_ERROR
 
@@ -181,7 +181,7 @@ int kill(int signum, char* job_id){
         perror("smash error: kill");
 		return SMASH_ERROR;
     } else {
-        printf("signal %d sent to pid %d\n", signal, job_pid);
+        printf("signal %d sent to pid %d\n", signal, job_pid); //TODO: where is signal defined or what is it? it is listed as void (* (*)(int,  void (*)(int)))(int)
     }
 	return SMASH_SUCCESS;
 }
@@ -189,9 +189,9 @@ int kill(int signum, char* job_id){
 //should be fine - not yet tested though
 int empty_fg(){
 	int max_id = -1;
-	for (int i = 0; i < MAX_JOBS; i++) {
-		if (jobs_arr[i] != NULL) {
-			Max_id = i;
+	for (int i = 0; i < MAX_JOBS; i++) { //TODO: you can use next_free_index from jobs.C 
+		if (jobs_arr[i].pid != 0) {
+			max_id = i;
 			}
 		}
 	if (max_id == -1) {
@@ -202,18 +202,19 @@ int empty_fg(){
 	sprintf(job_id_char, "%02d", max_id);
 	return fg(job_id_char);
 }
+
 int fg(char* job_id){
 	int job_index = str_to_int(job_id);
 	if (job_index == -1) {
 		fprintf(stderr, "smash error: fg: invalid arguments\n");
 		return SMASH_FAIL;
 	}
-	if (jobs_arr[job_index] == NULL) {
+	if (jobs_arr[job_index].pid == 0) {
 		fprintf(stderr, "smash error: fg: job id %d does not exist\n", job_index);
 		return SMASH_FAIL; //perhaps need to be SMASH_ERROR
 	}
-	send_fg_signal(job_index); //alon write - it send signal and update the arr
-	print_job(jobs_arr[job_index]);
+	send_fg_signal(job_index); //TODO: alon write - it send signal and update the arr
+	print_job(jobs_arr[job_index].job_id);
 	return SMASH_SUCCESS;
 }
 
@@ -221,7 +222,7 @@ int fg(char* job_id){
 int empty_bg(){
 	int max_id = -1;
 	for (int i = 0; i < MAX_JOBS; i++) {
-		if (jobs_arr[i] != NULL) {
+		if (jobs_arr[i].pid != 0) {
 			if (jobs_arr[i].status == JOB_RUNNUNG_BG) { //mabey alon called it another name + perhaps need helper func and not arrow
 				max_id = i;
 			}
@@ -241,7 +242,7 @@ int bg(char* job_id){
 		fprintf(stderr, "smash error: bg: invalid arguments\n");
 		return SMASH_FAIL;
 	}
-	if (jobs_arr[job_index] == NULL) {
+	if (jobs_arr[job_index].pid == 0) {
 		fprintf(stderr, "smash error: bg: job id %d does not exist\n", job_index);
 		return SMASH_FAIL; //perhaps need to be SMASH_ERROR
 	}
@@ -249,8 +250,8 @@ int bg(char* job_id){
 		fprintf(stderr, "smash error: bg: job id %d is already in background\n", job_index);
 		return SMASH_FAIL; //perhaps need to be SMASH_ERROR
 	}
-	send_bg_signal(job_index); //alon write - it send signal and update the arr
-	print_job(jobs_arr[job_index]);
+	send_bg_signal(job_index); //TODO: alon write - it send signal and update the arr
+	print_job(jobs_arr[job_index].job_id);
 	return SMASH_SUCCESS;
 }
 
@@ -262,13 +263,13 @@ int quit(){
 int quit_kill(){
 	//kill all jobs
 	for (int i = 0; i < MAX_JOBS; i++) {
-		if (jobs_arr[i] != NULL) {
-			int curr_id = i;
+		if (jobs_arr[i].pid != 0) {
+			int curr_id = i; //TODO: unused
 			pid_t curr_pid = jobs_arr[i].pid; //perhaps helper func
 			char* cmd = jobs_arr[i].cmd_line;
 			printf("[%d] %s - sending SIGTERM... ", curr_id, cmd);
-			
-			if (kill(job_pid, SIGTERM) == -1) {
+			//TODO: maybe call cleanjobs? there is memory allocated for cmn_line - potential leak
+			if (kill(jobs_arr[i].pid, SIGTERM) == -1) { //TODO:  I have changed job_pid -> jobs_arr[i].pid. job_id was undeclared
                 perror("smash error: quit kill - SIGTERM failed");//wont happend - if we see this print just delet the print line
                 continue;
             }
@@ -277,7 +278,7 @@ int quit_kill(){
 		time_t start_time = time(NULL);
 		// Wait up to 5 seconds
 		while (time(NULL) - start_time < 5) {
-			if (waitpid(job_pid, NULL, WNOHANG) > 0) {
+			if (waitpid(jobs_arr[i].pid, NULL, WNOHANG) > 0) { //TODO:  I have changed job_pid -> jobs_arr[i].pid. job_id was undeclared
 				printf("done\n");
 				break;
 			}
@@ -285,10 +286,10 @@ int quit_kill(){
 		}
 
 		// If still alive after 5 seconds
-		if (waitpid(job_pid, NULL, WNOHANG) == 0) {
+		if (waitpid(jobs_arr[i].pid, NULL, WNOHANG) == 0) {
 			
 			printf("sending SIGKILL... done\n");
-			if (kill(job_pid, SIGKILL) == -1) {
+			if (kill(jobs_arr[i].pid, SIGKILL) == -1) { //TODO:  I have changed job_pid -> jobs_arr[i].pid. job_id was undeclared
 				perror("smash error: quit kill - SIGKILL failed"); //wont happend - if we see this print just delet the print line
 				return SMASH_ERROR;
 			}

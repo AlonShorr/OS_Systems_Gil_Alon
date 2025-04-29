@@ -14,7 +14,6 @@
 #include "signals.h"
 #include "jobs.h"
 
-#define CMD_LENGTH_MAX  80
 #define MAX_ARGS        20
 #define ERROR -1
 
@@ -39,6 +38,29 @@ char _cmd[CMD_LENGTH_MAX];
 /*=============================================================================
 * Functions
 =============================================================================*/
+
+/**
+ * @brief signal handler for SIGINT (Ctrl+C) and SIGSTP (Ctrl+Z)
+ */
+void init_signals() {
+    struct sigaction ctrlC;
+    struct sigaction ctrlZ;
+
+	//ctrlC handler:
+    ctrlC.sa_handler = ctrl_c_handler;
+    sigemptyset(&ctrlC.sa_mask);
+    ctrlC.sa_flags = 0;
+    sigaction(SIGINT, &ctrlC, NULL);
+
+	//ctrlZ handler:
+    ctrlZ.sa_handler = ctrl_z_handler;
+    sigemptyset(&ctrlZ.sa_mask);
+    ctrlZ.sa_flags = 0;
+    sigaction(SIGTSTP, &ctrlZ, NULL);
+
+	return;
+}
+
 
 /**
  * @brief tokenize input line into the Command struct.
@@ -227,14 +249,12 @@ void launch_external(Command *cmd) {
  /*=============================================================================
   * main function
   *=============================================================================*/
-//TODO: take care of ctrl C and ctrl Z!!!!!!!!!!!!!! calling ctrl C and Z handler
-// also make sure smash prints  prompt after  ctrl C and  Z
 int main(int argc, char* argv[])
  {
 	 Command cmd;
  
 	 /*sets signal handlers from default to our custom ones (so bash won't kill smash :( )*/
-	init_signals();    // to be implemented
+	init_signals();  
  
 	 while (1) {
 		 // 1) print prompt
@@ -262,7 +282,7 @@ int main(int argc, char* argv[])
 		 if (!handle_builtin(&cmd)) 
 			launch_external(&cmd); //Forks and runs external programs (e.g. ls, sleep)
 
-		 // 5) update job list, reap finished, etc. (to implement)
+		 // 5) update job list
 		 update_jobs(); 
  
 		 // clear buffers for next iteration

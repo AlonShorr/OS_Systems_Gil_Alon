@@ -1,16 +1,30 @@
+# Compiler and flags
 CC = gcc
-CFLAGS = -std=c99 -Wall -Werror -pedantic-errors -pthread -DNDEBUG
-SRCS = $(wildcard *.c)
-OBJS = $(SRCS:.c=.o)
-TARGET = smash
+CFLAGS = -g -Wall
 
-all: $(TARGET)
+# Target name
+TARGET = smash.exe
 
+# Object files
+OBJS = smash.o commands.o signals.o jobs.o
+
+# Default rule: Build the target executable
 $(TARGET): $(OBJS)
-	$(CC) $(CFLAGS) $(OBJS) -o $(TARGET)
+	$(CC) $(CFLAGS) -o $(TARGET) $(OBJS)
 
-%.o: %.c
-	$(CC) $(CFLAGS) -c $< -o $@
+# Rules for building object files
+smash.o: smash.c commands.h signals.h jobs.h
+	$(CC) $(CFLAGS) -c smash.c -o smash.o
 
+commands.o: commands.c commands.h jobs.h
+	$(CC) $(CFLAGS) -c commands.c -o commands.o
+
+signals.o: signals.c signals.h
+	$(CC) $(CFLAGS) -c signals.c -o signals.o
+
+jobs.o: jobs.c jobs.h
+	$(CC) $(CFLAGS) -c jobs.c -o jobs.o
+
+# Cleaning old files before a new build
 clean:
-	rm -rf $(TARGET) $(OBJS)
+	rm -f $(TARGET) $(OBJS) *~ core.*
