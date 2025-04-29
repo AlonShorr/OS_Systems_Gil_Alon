@@ -55,6 +55,26 @@ int parseCmdExample(char* line)
 		} CmdArgs;
 	*/
 //}
+
+//==============================================================================
+// helper functions
+
+//change char to int for job id
+int str_to_int(char* str)
+{
+	int num = 0;
+	for (int i = 0; str[i] != '\0'; i++) {
+		if (str[i] < '0' || str[i] > '9') {
+			return -1;
+		}
+		num = num * 10 + (str[i] - '0');
+	}
+	if (num < 0 || num >= MAX_JOBS) {
+		return -1;
+	}
+	return num;
+}
+
 //=============================================================================
 
 // requaired functions
@@ -75,7 +95,7 @@ int pwd()
 		printf("%s\n", cwd);
 		return SMASH_SUCCESS;
 	} else {
-		perror("getcwd() error"); //won't happen - just for clearty
+		perror("getcwd() error"); //won't happen - just for clarity
 	}
 	return SMASH_ERROR;
 }
@@ -89,14 +109,14 @@ int cd(char* path)
 		//perhaps need this print instead:     fprintf(stderr, "smash error: cd: expected 1 arguments\n");
 		return SMASH_FAIL;
 	}
-	char curr_cwd[PATH_MAX]; //TODO: unused
-	if (getcwd(cwd, sizeof(cwd)) == NULL){ //TODO: cwd is not defined
+	char curr_cwd[PATH_MAX]; 
+	if (getcwd(curr_cwd, sizeof(cwd)) == NULL){ 
 		perror("getcwd() error");
 		return SMASH_ERROR;
 	}
 
 // Handle "cd -"
-	if (strcmp(arg, "-") == 0) { //TODO: arg is not defined
+	if (strcmp(path, "-") == 0) { 
 		if (strlen(prev_path) == 0) {
 			fprintf(stderr, "smash error: cd: old pwd not set");
 			return SMASH_FAIL;
@@ -112,7 +132,7 @@ int cd(char* path)
 	
 	//handle "cd.."
 	else if (strcmp(path, "..") == 0) {
-		if (strcmp(curr_path, "/") == 0) { //TODO: curr_path is not defined
+		if (strcmp(path, "/") == 0) { 
 			return SMASH_SUCCESS; //need to see whats going of with prev path - might have a bug here
 		}
 		if (chdir("..") != 0) {
@@ -165,7 +185,7 @@ int jobs(){
 
 //should be fine - not yet tested though
 int smash_kill(int signum, char* job_id){
-	int job_index = str_to_int(job_id); //TODO: implicit declaration
+	int job_index = str_to_int(job_id); 
 	if (job_index == -1) {
 		fprintf(stderr, "smash error: kill: invalid arguments\n");
 		return SMASH_FAIL;
@@ -181,7 +201,7 @@ int smash_kill(int signum, char* job_id){
         perror("smash error: kill");
 		return SMASH_ERROR;
     } else {
-        printf("signal %d sent to pid %d\n", signal, job_pid); //TODO: where is signal defined or what is it? it is listed as void (* (*)(int,  void (*)(int)))(int)
+        printf("signal %d sent to pid %d\n", signum, job_pid); 
     }
 	return SMASH_SUCCESS;
 }
@@ -189,7 +209,7 @@ int smash_kill(int signum, char* job_id){
 //should be fine - not yet tested though
 int empty_fg(){
 	int max_id = -1;
-	for (int i = 0; i < MAX_JOBS; i++) { //TODO: you can use next_free_index from jobs.C 
+	for (int i = 0; i < MAX_JOBS; i++) { 
 		if (jobs_arr[i].pid != 0) {
 			max_id = i;
 			}
@@ -351,21 +371,4 @@ int diff(char* file1, char* file2){
     }
 }
 
-//==============================================================================
-// helper functions
 
-//change char to int for job id
-int str_to_int(char* str)
-{
-	int num = 0;
-	for (int i = 0; str[i] != '\0'; i++) {
-		if (str[i] < '0' || str[i] > '9') {
-			return -1;
-		}
-		num = num * 10 + (str[i] - '0');
-	}
-	if (num < 0 || num >= MAX_JOBS) {
-		return -1;
-	}
-	return num;
-}
