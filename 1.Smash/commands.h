@@ -30,6 +30,12 @@
 #define SMASH_ERROR 2
 
 
+// Command structure: argv-style args array + bg flag
+typedef struct {
+	char* args[ARGS_NUM_MAX + 1];  // NULL-terminated argument list (first argument == command name)
+	int   nargs;               // number of arguments (excluding NULL)
+	int   bg;                  // non-zero if command ends with '&'
+}Command;
 
 /*=============================================================================
 * error handling - some useful macros and examples of error handling,
@@ -58,6 +64,7 @@ static inline void* _validatedMalloc(size_t size)
 /*=============================================================================
 * error definitions
 =============================================================================*/
+/*
 typedef enum  {
 	INVALID_COMMAND = 0,
 	//feel free to add more values here or delete this
@@ -69,7 +76,7 @@ typedef enum {
 	SMASH_FAIL
 	//feel free to add more values here or delete this
 } CommandResult;
-
+*/
 /*=============================================================================
 * global functions
 =============================================================================*/
@@ -80,15 +87,17 @@ int showpid();
 int pwd();
 int cd(char* path);
 int jobs();
-int kill(int signum, char* job_id);
+int smash_kill(int signum, char* job_id);
 int fg(char* job_id);
+int empty_fg();
 int bg(char* job_id);
+int empty_bg();
 int diff(char* file1, char* file2);
 int quit();
 
 // helper functions
 
-int str_to_int(char* str)
+int str_to_int(char* str);
 
 
 

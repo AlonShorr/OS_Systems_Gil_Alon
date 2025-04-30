@@ -8,7 +8,6 @@
 #include <stdlib.h>
 #include "commands.h"
 #include "jobs.h"
-#include "smash.h"
 
 
 /*=============================================================================

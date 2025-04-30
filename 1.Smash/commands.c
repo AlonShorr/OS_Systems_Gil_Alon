@@ -49,6 +49,14 @@ int parseCmdExample(char* line)
 	*/
 //}
 
+//=============================================================================
+/**
+ * @brief global variables to track fg process that are defined in smash.c
+ */
+extern int fg_pid;           // current foreground PID
+extern char fg_cmd_line[CMD_LENGTH_MAX];   // copy of the command
+extern time_t fg_start_time;        // for elapsed time
+
 //==============================================================================
 // helper functions
 
@@ -103,7 +111,7 @@ int cd(char* path)
 		return SMASH_FAIL;
 	}
 	char curr_cwd[PATH_MAX]; 
-	if (getcwd(curr_cwd, sizeof(cwd)) == NULL){ 
+	if (getcwd(curr_cwd, sizeof(curr_cwd)) == NULL){ 
 		perror("getcwd() error");
 		return SMASH_ERROR;
 	}
@@ -162,7 +170,7 @@ int cd(char* path)
     }
 
 	// update prev_path
-	strcpy(prev_path, curr_path); //perhaps need to be in defferent place - check in debug
+	strcpy(prev_path, curr_path); //perhaps need to be in defferent place - check in debug TODO: what is curr_path? itis not defined
 	return SMASH_SUCCESS;
 }
 
@@ -227,13 +235,13 @@ int fg(char* job_id){
 		return SMASH_FAIL; //perhaps need to be SMASH_ERROR
 	}
 	pid_t job_pid = jobs_arr[job_index].pid;
-	if kill((job_pid, SIGCONT) == -1) {
+	if (kill(job_pid, SIGCONT) == -1) {
 		perror("smash error: fg: kill failed");
 		return SMASH_ERROR;
 	}
 	//update global
 	fg_pid = job_pid;
-    strcpy(fg_cmd_line, job->cmd_line);
+    strcpy(fg_cmd_line, jobs_arr[job_index].cmd_line);
 	//remove from jobs_arr
 	print_job(jobs_arr[job_index].job_id);
 	remove_job(job_index);
@@ -243,7 +251,7 @@ int fg(char* job_id){
 		perror("smash error: fg: waitpid failed");
 		return SMASH_ERROR;
 	}
-	if (WIFEXISTED(status) || WIFSIGNALED(status)) {
+	if (WIFEXITED(status) || WIFSIGNALED(status)) {
 		fg_pid = -1;
 	} else if (WIFSTOPPED(status)){
 		add_job(job_pid, fg_cmd_line, JOB_STOPPED);
@@ -287,7 +295,7 @@ int bg(char* job_id){
 		return SMASH_FAIL; //perhaps need to be SMASH_ERROR
 	}
 	pid_t job_pid = jobs_arr[job_index].pid;
-	if kill((job_pid, SIGCONT) == -1) {
+	if (kill(job_pid, SIGCONT) == -1) {
 		perror("smash error: fg: kill failed");
 		return SMASH_ERROR;
 	}	
@@ -306,10 +314,9 @@ int quit_kill(){
 	for (int i = 0; i < MAX_JOBS; i++) {
 		if (jobs_arr[i].pid != 0) {
 			int curr_id = i; //TODO: unused
-			pid_t curr_pid = jobs_arr[i].pid; //perhaps helper func
+			pid_t curr_pid = jobs_arr[i].pid; //perhaps helper func //TODO: unused
 			char* cmd = jobs_arr[i].cmd_line;
 			printf("[%d] %s - sending SIGTERM... ", curr_id, cmd);
-			//TODO: maybe call cleanjobs? there is memory allocated for cmn_line - potential leak
 			if (kill(jobs_arr[i].pid, SIGTERM) == -1) { //TODO:  I have changed job_pid -> jobs_arr[i].pid. job_id was undeclared
                 perror("smash error: quit kill - SIGTERM failed");//wont happend - if we see this print just delet the print line
                 continue;
@@ -337,7 +344,7 @@ int quit_kill(){
 		}
 
 	}
-	clean_all_jobs();
+	clean_all_jobs(); //TODO: is this the right location?
 	exit(0);
 	return SMASH_SUCCESS;
 }
