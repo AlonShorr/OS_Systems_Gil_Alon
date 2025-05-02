@@ -25,6 +25,6 @@ signals.o: signals.c signals.h
 jobs.o: jobs.c jobs.h
 	$(CC) $(CFLAGS) -c jobs.c -o jobs.o
 
-# Cleaning old files before a new build
+# Clean rule
 clean:
 	rm -f $(TARGET) $(OBJS) *~ core.*

@@ -9,18 +9,19 @@
 #include <unistd.h> 
 #include <string.h>
 #include <errno.h>
+#include <signal.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include "signals.h"
 #include "jobs.h"
-//#include <sys/types.h>
+#include <sys/types.h>
 
 #define CMD_LENGTH_MAX 120
 #define ARGS_NUM_MAX 20
 #define ERROR -1
 #define MAX_JOBS 100
 
-#define JOB_RUNNING_FG 0
+//#define JOB_RUNNING_FG 2
 #define JOB_RUNNING_BG 1
 #define JOB_STOPPED 2
 #define PATH_MAX 4096
@@ -28,6 +29,13 @@
 #define SMASH_SUCCESS 0
 #define SMASH_FAIL 1
 #define SMASH_ERROR 2
+
+
+extern job jobs_arr[MAX_JOBS]; // array of jobs
+extern int jobs_num;
+extern pid_t fg_pid;           // current foreground PID
+extern char fg_cmd_line[CMD_LENGTH_MAX];   // copy of the command
+extern time_t fg_start_time;        // for elapsed time
 
 
 // Command structure: argv-style args array + bg flag
@@ -94,6 +102,7 @@ int bg(char* job_id);
 int empty_bg();
 int diff(char* file1, char* file2);
 int quit();
+int quit_kill();
 
 // helper functions
 

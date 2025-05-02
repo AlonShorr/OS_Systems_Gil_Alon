@@ -32,7 +32,15 @@ int next_free_index() {
     return ERROR;
 }
 
-int get_id (int pid) {
+int get_job_id (job job) {
+    for(int i=0; i < MAX_JOBS; i++) {
+        if (jobs_arr[i].pid == job.pid)  
+            return i;
+    }
+    return ERROR;
+}
+
+int get_id (pid_t pid) {
     for(int i=0; i < MAX_JOBS; i++) {
         if (jobs_arr[i].pid == pid)  
             return i;
@@ -40,14 +48,37 @@ int get_id (int pid) {
     return ERROR;
 }
 
-
-int get_pid (int job_id) {
-    if (job_id < 0 || job_id >= MAX_JOBS) 
+pid_t get_pid(job job)
+{
+    if (job.job_id < 0 || job.job_id >= MAX_JOBS) 
         return ERROR;
-    else if (jobs_arr[job_id].pid == 0) 
+    else if (job.pid == 0) 
         return ERROR;  
 
-    return jobs_arr[job_id].pid;
+    return job.pid;
+}
+
+char* get_cmd_line (job job) {
+    if (job.job_id < 0 || job.job_id >= MAX_JOBS) 
+        return NULL;
+    else if (job.cmd_line == NULL) 
+        return NULL;  
+
+    return job.cmd_line;
+}
+
+time_t get_start_time (job job) {
+    if (job.job_id < 0 || job.job_id >= MAX_JOBS) 
+        return ERROR;
+     
+    return job.start_time;
+}
+
+int get_status (job job) {
+    if (job.job_id < 0 || job.job_id >= MAX_JOBS) 
+        return ERROR;
+  
+    return job.status;
 }
 
 void init_jobs() {
@@ -56,7 +87,7 @@ void init_jobs() {
 }
 
 
-int add_job(int pid, const char *cmd_line, int status) {
+int add_job(pid_t pid, const char *cmd_line, int status) {
     int index = next_free_index();
     if (index == ERROR)
         return ERROR;
@@ -92,23 +123,22 @@ int add_job(int pid, const char *cmd_line, int status) {
 
 void print_job(int job_id) {
     if ((job_id < 0 || job_id >= MAX_JOBS) 
-         || jobs_arr[job_id].pid == 0
-         || jobs_arr[job_id].status == JOB_RUNNING_FG)
+         || jobs_arr[job_id].pid == 0)
         return;
 
     job *job = &jobs_arr[job_id];
     long elapsed = (long)(time(NULL) - job->start_time);
 
     if(job->status == JOB_STOPPED)
-        printf("[%d] %s: %d %ld (stopped)\n",job->job_id, 
-                                             job->cmd_line,
-                                             job->pid,
-                                             elapsed); 
+        printf("[%d] %s: %d %ld secs (stopped)\n",job->job_id, 
+                                                  job->cmd_line,
+                                                  job->pid,
+                                                  elapsed); 
     else if(job->status == JOB_RUNNING_BG)
-        printf("[%d] %s: %d %ld\n",job->job_id, 
-                                   job->cmd_line,
-                                   job->pid,
-                                   elapsed); 
+        printf("[%d] %s: %d %ld secs\n",job->job_id, 
+                                        job->cmd_line,
+                                        job->pid,
+                                        elapsed); 
 }
 
 void update_job_status(int job_id, int status) {
@@ -125,7 +155,8 @@ void update_job_status(int job_id, int status) {
 }
 
 void update_jobs() {
-    int status, pid;
+    int status;
+    pid_t pid;
 
     while ((pid = waitpid(-1, &status, WNOHANG | WUNTRACED | WCONTINUED)) > 0) {
         int job_id = get_id(pid);

@@ -1,80 +1,34 @@
 #include "commands.h"
 
-
-
-char prev_path[PATH_MAX] ="";
-
-//=============================================================================
-/*
-//example function for printing errors from internal commands
-void perrorSmash(const char* cmd, const char* msg)
-{
-    fprintf(stderr, "smash error:%s%s%s\n",
-        cmd ? cmd : "",
-        cmd ? ": " : "",
-        msg);
-}
-
-//example function for parsing commands
-int parseCmdExample(char* line)
-{
-	char* delimiters = " \t\n"; //parsing should be done by spaces, tabs or newlines
-	char* cmd = strtok(line, delimiters); //read strtok documentation - parses string by delimiters
-	if(!cmd)
-		return INVALID_COMMAND; //this means no tokens were found, most like since command is invalid
-	
-	char* args[MAX_ARGS];
-	int nargs = 0;
-	args[0] = cmd; //first token before spaces/tabs/newlines should be command name
-	for(int i = 1; i < MAX_ARGS; i++)
-	{
-		args[i] = strtok(NULL, delimiters); //first arg NULL -> keep tokenizing from previous call
-		if(!args[i])
-			break;
-		nargs++;
-	}
-	/*
-	At this point cmd contains the command string and the args array contains
-	the arguments. You can return them via struct/class, for example in C:
-		typedef struct {
-			char* cmd;
-			char* args[MAX_ARGS];
-		} Command;
-	Or maybe something more like this:
-		typedef struct {
-			bool bg;
-			char** args;
-			int nargs;
-		} CmdArgs;
-	*/
-//}
-
 //=============================================================================
 /**
  * @brief global variables to track fg process that are defined in smash.c
  */
-extern int fg_pid;           // current foreground PID
-extern char fg_cmd_line[CMD_LENGTH_MAX];   // copy of the command
-extern time_t fg_start_time;        // for elapsed time
 
-//==============================================================================
-// helper functions
+ char prev_path[PATH_MAX] ="";
 
-//change char to int for job id
-int str_to_int(char* str)
-{
-	int num = 0;
-	for (int i = 0; str[i] != '\0'; i++) {
-		if (str[i] < '0' || str[i] > '9') {
-			return -1;
-		}
-		num = num * 10 + (str[i] - '0');
-	}
-	if (num < 0 || num >= MAX_JOBS) {
-		return -1;
-	}
-	return num;
-}
+ //==============================================================================
+
+ // helper functions
+
+ // change char to int for job id
+ int str_to_int(char *str)
+ {
+	 int num = 0;
+	 for (int i = 0; str[i] != '\0'; i++)
+	 {
+		 if (str[i] < '0' || str[i] > '9')
+		 {
+			 return -1;
+		 }
+		 num = num * 10 + (str[i] - '0');
+	 }
+	 if (num < 0 || num >= MAX_JOBS)
+	 {
+		 return -1;
+	 }
+	 return num;
+ }
 
 //=============================================================================
 
@@ -92,8 +46,7 @@ int showpid()
 int pwd()
 {
 	char cwd[PATH_MAX];
-	if (getcwd(cwd, sizeof(cwd)) != NULL) {
-		printf("%s\n", cwd);
+	if (getcwd(cwd, sizeof(cwd)) != NULL) { //getcwd prints the current working directory
 		return SMASH_SUCCESS;
 	} else {
 		perror("getcwd() error"); //won't happen - just for clarity
@@ -101,7 +54,6 @@ int pwd()
 	return SMASH_ERROR;
 }
 
-// need to check this, might have bugs in the way we print/following the "-" command in certine cases
 //if comes with & need to see that we send the correct procces in the main to this function
 int cd(char* path)
 {
@@ -115,52 +67,45 @@ int cd(char* path)
 		perror("getcwd() error");
 		return SMASH_ERROR;
 	}
-
-// Handle "cd -"
+	// Handle "cd -"
 	if (strcmp(path, "-") == 0) { 
 		if (strlen(prev_path) == 0) {
-			fprintf(stderr, "smash error: cd: old pwd not set");
+			fprintf(stderr, "smash error: cd: old pwd not set\n");
 			return SMASH_FAIL;
 		}
-
+		char temp[PATH_MAX];
+		getcwd(temp, sizeof(temp)); //get the current working directory
 		if (chdir(prev_path) != 0) {
 			perror("smash error: cd");
 			return SMASH_FAIL;
 		}
-
 		printf("%s\n", prev_path);
+		strcpy(prev_path, temp); //update prev_path to the current working directory
+		return SMASH_SUCCESS;
 	}
-	
 	//handle "cd.."
-	else if (strcmp(path, "..") == 0) {
-		if (strcmp(path, "/") == 0) { 
+	else if (strcmp(path, "..") == 0) {	
+		if (strcmp(fg_cmd_line, "/") == 0) { 
+			getcwd(prev_path, sizeof(prev_path)); //perhaps not good
 			return SMASH_SUCCESS; //need to see whats going of with prev path - might have a bug here
 		}
+		getcwd(prev_path, sizeof(prev_path)); 
 		if (chdir("..") != 0) {
 			perror("smash error: cd");
 			return SMASH_FAIL;
 		}
+		return SMASH_SUCCESS;
 	}
-
 	// normal case
-
-	//probebly bad: we needed specific prints thats why i made longer version and not just perror
-	/* 
-	else if (chdir(path) != 0) {
-		perror("smash error: cd");
-		//idk if perror can distinguish between "target directory does not exist" and "path + not a directory". need to check in debug
-		return SMASH_FAIL;
-	}
-	*/
-
-	// probebly good:
 	struct stat path_stat;
     if (stat(path, &path_stat) == 0) { 		// Check if the path exists
         if (S_ISDIR(path_stat.st_mode)) { 	// Path exists, check if it's a directory
-            if (chdir(path) != 0) {
+            getcwd(prev_path, sizeof(prev_path));
+			if (chdir(path) != 0) {
                 perror("smash error: cd");
             }
-        } else {
+        }
+		else {
             fprintf(stderr, "smash error: cd: %s: Not a directory\n", path);	// Path exists, but it's not a directory (it's a file)
 			return SMASH_FAIL;
         }
@@ -168,17 +113,14 @@ int cd(char* path)
         fprintf(stderr, "smash error: cd: target directory does not exist\n");	// Path doesn't exist
 		return SMASH_FAIL;
     }
-
-	// update prev_path
-	strcpy(prev_path, curr_path); //perhaps need to be in defferent place - check in debug TODO: what is curr_path? itis not defined
 	return SMASH_SUCCESS;
 }
 
 //should be fine - not yet tested though
 int jobs(){
 	for (int i = 0; i < MAX_JOBS; i++) {
-		if (jobs_arr[i].pid != 0) {
-			print_job(jobs_arr[i].job_id); //every reference to the array should be according to job id
+		if (get_pid(jobs_arr[i]) != 0) {
+			print_job(i); //every reference to the array should be according to job id
 		}
 	}
 	return SMASH_SUCCESS;
@@ -191,13 +133,13 @@ int smash_kill(int signum, char* job_id){
 		fprintf(stderr, "smash error: kill: invalid arguments\n");
 		return SMASH_FAIL;
 	}
-	if (jobs_arr[job_index].pid == 0) {
+	if (get_pid(jobs_arr[job_index]) == 0) {
 		fprintf(stderr, "smash error: kill: job id %d does not exist\n", job_index);
 		return SMASH_FAIL;	//perhaps need to be SMASH_ERROR
 
 	}
 	
-	pid_t job_pid = jobs_arr[job_index].pid;
+	pid_t job_pid = get_pid(jobs_arr[job_index]);
 	if (kill(job_pid, signum) == -1) {
         perror("smash error: kill");
 		return SMASH_ERROR;
@@ -211,7 +153,7 @@ int smash_kill(int signum, char* job_id){
 int empty_fg(){
 	int max_id = -1;
 	for (int i = 0; i < MAX_JOBS; i++) { 
-		if (jobs_arr[i].pid != 0) {
+		if (get_pid(jobs_arr[i]) != 0) {
 			max_id = i;
 			}
 		}
@@ -230,20 +172,20 @@ int fg(char* job_id){
 		fprintf(stderr, "smash error: fg: invalid arguments\n");
 		return SMASH_FAIL;
 	}
-	if (jobs_arr[job_index].pid == 0) {
+	if (get_pid(jobs_arr[job_index]) == 0) {
 		fprintf(stderr, "smash error: fg: job id %d does not exist\n", job_index);
 		return SMASH_FAIL; //perhaps need to be SMASH_ERROR
 	}
-	pid_t job_pid = jobs_arr[job_index].pid;
+	pid_t job_pid = get_pid(jobs_arr[job_index]);
 	if (kill(job_pid, SIGCONT) == -1) {
 		perror("smash error: fg: kill failed");
 		return SMASH_ERROR;
 	}
 	//update global
 	fg_pid = job_pid;
-    strcpy(fg_cmd_line, jobs_arr[job_index].cmd_line);
+    strcpy(fg_cmd_line, get_cmd_line(jobs_arr[job_index]));
 	//remove from jobs_arr
-	print_job(jobs_arr[job_index].job_id);
+	print_job(job_index);
 	remove_job(job_index);
 	//wait for the job to finish
 	int status;
@@ -265,7 +207,7 @@ int fg(char* job_id){
 int empty_bg(){
 	int max_id = -1;
 	for (int i = 0; i < MAX_JOBS; i++) {
-		if (jobs_arr[i].pid != 0) {
+		if (get_pid(jobs_arr[i]) != 0) {
 			if (jobs_arr[i].status == JOB_STOPPED) {
 				max_id = i;
 			}
@@ -286,7 +228,7 @@ int bg(char* job_id){
 		fprintf(stderr, "smash error: bg: invalid arguments\n");
 		return SMASH_FAIL;
 	}
-	if (jobs_arr[job_index].pid == 0) {
+	if (get_pid(jobs_arr[job_index]) == 0) {
 		fprintf(stderr, "smash error: bg: job id %d does not exist\n", job_index);
 		return SMASH_FAIL; //perhaps need to be SMASH_ERROR
 	}
@@ -294,13 +236,13 @@ int bg(char* job_id){
 		fprintf(stderr, "smash error: bg: job id %d is already in background\n", job_index);
 		return SMASH_FAIL; //perhaps need to be SMASH_ERROR
 	}
-	pid_t job_pid = jobs_arr[job_index].pid;
+	pid_t job_pid = get_pid(jobs_arr[job_index]);
 	if (kill(job_pid, SIGCONT) == -1) {
 		perror("smash error: fg: kill failed");
 		return SMASH_ERROR;
 	}	
 	update_job_status(job_index, JOB_RUNNING_BG);
-	print_job(jobs_arr[job_index].job_id);
+	print_job(job_index);
 	return SMASH_SUCCESS;
 }
 
@@ -309,15 +251,16 @@ int quit(){
 	exit(0);
 	return SMASH_SUCCESS;
 }
+
 int quit_kill(){
 	//kill all jobs
 	for (int i = 0; i < MAX_JOBS; i++) {
-		if (jobs_arr[i].pid != 0) {
+		if (get_pid(jobs_arr[i]) != 0) {
 			int curr_id = i; //TODO: unused
-			pid_t curr_pid = jobs_arr[i].pid; //perhaps helper func //TODO: unused
-			char* cmd = jobs_arr[i].cmd_line;
+			//pid_t curr_pid = get_pid(jobs_arr[i]); //perhaps helper func //TODO: unused
+			char* cmd = get_cmd_line(jobs_arr[i]);
 			printf("[%d] %s - sending SIGTERM... ", curr_id, cmd);
-			if (kill(jobs_arr[i].pid, SIGTERM) == -1) { //TODO:  I have changed job_pid -> jobs_arr[i].pid. job_id was undeclared
+			if (kill(get_pid(jobs_arr[i]), SIGTERM) == -1) { //TODO:  I have changed job_pid -> jobs_arr[i].pid. job_id was undeclared
                 perror("smash error: quit kill - SIGTERM failed");//wont happend - if we see this print just delet the print line
                 continue;
             }
@@ -326,7 +269,7 @@ int quit_kill(){
 		time_t start_time = time(NULL);
 		// Wait up to 5 seconds
 		while (time(NULL) - start_time < 5) {
-			if (waitpid(jobs_arr[i].pid, NULL, WNOHANG) > 0) { //TODO:  I have changed job_pid -> jobs_arr[i].pid. job_id was undeclared
+			if (waitpid(get_pid(jobs_arr[i]), NULL, WNOHANG) > 0) { //TODO:  I have changed job_pid -> jobs_arr[i].pid. job_id was undeclared
 				printf("done\n");
 				break;
 			}
@@ -334,10 +277,10 @@ int quit_kill(){
 		}
 
 		// If still alive after 5 seconds
-		if (waitpid(jobs_arr[i].pid, NULL, WNOHANG) == 0) {
+		if (waitpid(get_pid(jobs_arr[i]), NULL, WNOHANG) == 0) {
 			
 			printf("sending SIGKILL... done\n");
-			if (kill(jobs_arr[i].pid, SIGKILL) == -1) { //TODO:  I have changed job_pid -> jobs_arr[i].pid. job_id was undeclared
+			if (kill(get_pid(jobs_arr[i]), SIGKILL) == -1) { //TODO:  I have changed job_pid -> jobs_arr[i].pid. job_id was undeclared
 				perror("smash error: quit kill - SIGKILL failed"); //wont happend - if we see this print just delet the print line
 				return SMASH_ERROR;
 			}

@@ -1,5 +1,7 @@
 //smash.c
 
+#define _POSIX_C_SOURCE 200809L
+#define _XOPEN_SOURCE 700
 /*=============================================================================
 * includes, defines, usings
 =============================================================================*/
@@ -32,7 +34,7 @@ char _cmd[CMD_LENGTH_MAX];
 /**
  * @brief global variable to hold the current foreground process ID and command line.
  */
-int fg_pid;           // current foreground PID
+pid_t fg_pid;           // current foreground PID
 char fg_cmd_line[CMD_LENGTH_MAX];   // copy of the command
 time_t fg_start_time;        // for elapsed time
 
@@ -90,14 +92,13 @@ int parseCommand(char *cmd_input, Command *out) {
 
 	// check for trailing '&'
 	if (out->nargs > 0 && strcmp(out->args[out->nargs - 1], "&") == 0) 
-	{
 		out->bg = 1;
-		out->args[out->nargs - 1] = NULL;
-		out->nargs--;
-	}
+	
 	return 0;
 }
 
+//out->args[out->nargs - 1] = NULL;
+		//out->nargs--;
 
 /**
  * @brief Built‑In Command Dispatcher
@@ -117,11 +118,11 @@ int handle_builtin(Command *cmd) {
 	  if (cmd->bg) {
         // Only allow background for certain built-ins
         if (strcmp(cmd->args[0], "cd") == 0 || strcmp(cmd->args[0], "fg") == 0 || strcmp(cmd->args[0], "quit") == 0) {
-            fprintf(stderr, "smash error: %s cannot run in background", cmd->args[0]);
+            fprintf(stderr, "smash error: %s cannot run in background\n", cmd->args[0]);
             return 1;
         }
 
-        int pid = fork();
+        pid_t pid = fork();
         if (pid < 0) {
             perror("smash error: fork failed");
             return 1;
@@ -131,8 +132,9 @@ int handle_builtin(Command *cmd) {
             cmd->bg = 0; // Run as foreground inside the child
             handle_builtin(cmd);
             exit(0);
-        } else {
-            add_job(pid, cmd->args[0], JOB_RUNNING_BG); //TODO: check success?
+        } 
+        else {
+            add_job(pid, _line, JOB_RUNNING_BG); //TODO: check success?
             return 1;
         }
     }
@@ -230,7 +232,7 @@ int handle_builtin(Command *cmd) {
  * @param cmd: the cmd struct after parsing.
  */
 void launch_external(Command *cmd) { 
-    int pid = fork();
+    pid_t pid = fork();
     if (pid < 0) {
         perror("smash error: fork failed");
         return;
@@ -238,22 +240,22 @@ void launch_external(Command *cmd) {
     else if (pid == 0) {
         setpgrp();
         execvp(cmd->args[0], cmd->args);
-        perror("smash error: execvp failed");
+        //perror("smash error: execvp failed");
         exit(1);
     }
     else {
         int status;
         if (!cmd->bg) {
             fg_pid = pid; // set fg pid to the new process
-            strcpy(fg_cmd_line, cmd->args[0]);
+            strcpy(fg_cmd_line, _line);
             fg_start_time = time(NULL);
             waitpid(pid, &status, WUNTRACED);
             if (WIFSTOPPED(status)) {
-                add_job(pid, cmd->args[0], JOB_STOPPED);
+                add_job(pid, _line, JOB_STOPPED);
             }
         }
         else if (cmd->bg) {
-            add_job(pid, cmd->args[0], JOB_RUNNING_BG);
+            add_job(pid, _line, JOB_RUNNING_BG);
         }
     } 
 }
@@ -280,7 +282,8 @@ int main(int argc, char* argv[])
 			 // EOF or error
 			 break;
 		 }
- 
+         _line[strcspn(_line, "\n")] = '\0';
+
 		 // copy raw input if needed elsewhere
 		 strcpy(_cmd, _line);
  
