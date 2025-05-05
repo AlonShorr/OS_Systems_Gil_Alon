@@ -78,6 +78,15 @@ int add_job(pid_t pid, const char *cmd_line, int status);
  */
 void remove_job(int job_id);
 
+
+/**
+ * @brief Removes the job at the given its pid.
+ * It zeroes array[job_id].pid and decrement the active job counter. 
+ * Leaving holes is intentional because each job keeps its job_id until it finishes.
+ * @param job_id to remove
+ */
+void remove_job_by_pid(pid_t pid);
+
 /**
  * @brief: updates a single job status in the jobs array.
  * @param job_id: the job id to update.

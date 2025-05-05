@@ -47,6 +47,7 @@ int pwd()
 {
 	char cwd[PATH_MAX];
 	if (getcwd(cwd, sizeof(cwd)) != NULL) { //getcwd prints the current working directory
+		printf("%s\n", cwd);
 		return SMASH_SUCCESS;
 	} else {
 		perror("getcwd() error"); //won't happen - just for clarity
@@ -117,8 +118,9 @@ int cd(char* path)
 }
 
 //should be fine - not yet tested though
-int jobs(){
+int s_jobs(){
 	for (int i = 0; i < MAX_JOBS; i++) {
+		update_jobs();
 		if (get_pid(jobs_arr[i]) != 0) {
 			print_job(i); //every reference to the array should be according to job id
 		}
@@ -185,12 +187,12 @@ int fg(char* job_id){
 	fg_pid = job_pid;
     strcpy(fg_cmd_line, get_cmd_line(jobs_arr[job_index]));
 	//remove from jobs_arr
-	print_job(job_index);
+	printf("%s: %d\n", jobs_arr[job_index].cmd_line, jobs_arr[job_index].pid);
 	remove_job(job_index);
 	//wait for the job to finish
 	int status;
 	if (waitpid(job_pid, &status, WUNTRACED) == -1) {
-		perror("smash error: fg: waitpid failed");
+		//perror("smash error: fg: waitpid failed");
 		return SMASH_ERROR;
 	}
 	if (WIFEXITED(status) || WIFSIGNALED(status)) {
@@ -238,18 +240,20 @@ int bg(char* job_id){
 	}
 	pid_t job_pid = get_pid(jobs_arr[job_index]);
 	if (kill(job_pid, SIGCONT) == -1) {
-		perror("smash error: fg: kill failed");
+		perror("smash error: bg: kill failed");
 		return SMASH_ERROR;
 	}	
 	update_job_status(job_index, JOB_RUNNING_BG);
-	print_job(job_index);
+	printf("%s: %d\n", jobs_arr[job_index].cmd_line, jobs_arr[job_index].pid);
 	return SMASH_SUCCESS;
 }
 
 //should be fine - not yet tested though
 int quit(){
-	exit(0);
-	return SMASH_SUCCESS;
+	//printf("in quit\n");
+	//exit(0);
+	printf("haha no need for this function, the main already handles the quit ^_^\n");
+	return SMASH_QUIT;
 }
 
 int quit_kill(){
@@ -263,32 +267,29 @@ int quit_kill(){
 			if (kill(get_pid(jobs_arr[i]), SIGTERM) == -1) { //TODO:  I have changed job_pid -> jobs_arr[i].pid. job_id was undeclared
                 perror("smash error: quit kill - SIGTERM failed");//wont happend - if we see this print just delet the print line
                 continue;
-            }
-					
-		}
-		time_t start_time = time(NULL);
-		// Wait up to 5 seconds
-		while (time(NULL) - start_time < 5) {
-			if (waitpid(get_pid(jobs_arr[i]), NULL, WNOHANG) > 0) { //TODO:  I have changed job_pid -> jobs_arr[i].pid. job_id was undeclared
-				printf("done\n");
-				break;
+            }	
+			time_t start_time = time(NULL);
+			// Wait up to 5 seconds
+			while (time(NULL) - start_time < 5) {
+				if (waitpid(get_pid(jobs_arr[i]), NULL, WNOHANG) > 0) { //TODO:  I have changed job_pid -> jobs_arr[i].pid. job_id was undeclared
+					printf("done\n");
+					break;
+				}
+				sleep(1); // sleep 1 second between checks
 			}
-			sleep(1); // sleep 1 second between checks
-		}
-
-		// If still alive after 5 seconds
-		if (waitpid(get_pid(jobs_arr[i]), NULL, WNOHANG) == 0) {
-			
-			printf("sending SIGKILL... done\n");
-			if (kill(get_pid(jobs_arr[i]), SIGKILL) == -1) { //TODO:  I have changed job_pid -> jobs_arr[i].pid. job_id was undeclared
-				perror("smash error: quit kill - SIGKILL failed"); //wont happend - if we see this print just delet the print line
-				return SMASH_ERROR;
+			// If still alive after 5 seconds
+			if (waitpid(get_pid(jobs_arr[i]), NULL, WNOHANG) == 0) {	
+				printf("sending SIGKILL... done\n");
+				if (kill(get_pid(jobs_arr[i]), SIGKILL) == -1) { //TODO:  I have changed job_pid -> jobs_arr[i].pid. job_id was undeclared
+					perror("smash error: quit kill - SIGKILL failed"); //wont happend - if we see this print just delet the print line
+					return SMASH_ERROR;
+				}
 			}
 		}
-
 	}
 	clean_all_jobs(); //TODO: is this the right location?
-	exit(0);
+
+	//exit(0);
 	return SMASH_SUCCESS;
 }
 

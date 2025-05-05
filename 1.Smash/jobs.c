@@ -12,6 +12,7 @@
 
 job jobs_arr[MAX_JOBS];
 int jobs_num = 0;
+extern pid_t fg_pid;           // current foreground PID
 
 /*=============================================================================
 * Function Declarations
@@ -52,9 +53,6 @@ pid_t get_pid(job job)
 {
     if (job.job_id < 0 || job.job_id >= MAX_JOBS) 
         return ERROR;
-    else if (job.pid == 0) 
-        return ERROR;  
-
     return job.pid;
 }
 
@@ -82,12 +80,21 @@ int get_status (job job) {
 }
 
 void init_jobs() {
-    memset(jobs_arr, 0, sizeof jobs_arr);
+    for(int i = 0; i < MAX_JOBS; i++) {
+        jobs_arr[i].pid = 0;
+        jobs_arr[i].cmd_line = NULL;
+        jobs_arr[i].start_time = 0;
+        jobs_arr[i].status = JOB_RUNNING_FG;
+    }
+    // Initialize the global job count
     jobs_num = 0;
 }
 
 
 int add_job(pid_t pid, const char *cmd_line, int status) {
+    if (pid <= 0 || cmd_line == NULL) {
+        return ERROR;
+    }
     int index = next_free_index();
     if (index == ERROR)
         return ERROR;
@@ -103,7 +110,6 @@ int add_job(pid_t pid, const char *cmd_line, int status) {
     new_job->status = status;
 
     jobs_num++;
-
     return index; //on Success
 }
 
@@ -116,10 +122,38 @@ int add_job(pid_t pid, const char *cmd_line, int status) {
     job *job = &jobs_arr[job_id];
     if(job->cmd_line)
         free(job->cmd_line);
-    memset(job, 0, sizeof(*job));
+    jobs_arr[job_id].pid = 0;
+    jobs_arr[job_id].cmd_line = NULL;
+    jobs_arr[job_id].start_time = 0;
+    jobs_arr[job_id].status = JOB_RUNNING_FG;
 
     jobs_num--;
 }
+
+
+void remove_job_by_pid(pid_t pid) {
+    for (int i = 0; i < MAX_JOBS; i++) {
+        if (jobs_arr[i].pid != 0 && jobs_arr[i].pid == pid) {
+            remove_job(i);
+            break;
+        }
+    }
+}
+
+/*
+void remove_job_by_pid(pid_t pid) {
+    for (int i = 0; i < MAX_JOBS; i++) {
+        if (jobs_arr[i].pid != 0 && jobs_arr[i].pid == pid) {;
+            jobs_arr[i].pid = 0;
+            //
+            printf("Removing job with pid remove_by_pid: %d at index %d\n", jobs_arr[i].pid, i);
+            //
+            break;
+        }
+    }
+    
+    jobs_num--;
+} */
 
 void print_job(int job_id) {
     if ((job_id < 0 || job_id >= MAX_JOBS) 
@@ -155,19 +189,26 @@ void update_job_status(int job_id, int status) {
 }
 
 void update_jobs() {
-    int status;
     pid_t pid;
+    int status;
+    for (int i = 0; i < MAX_JOBS; i++) {
+        pid = jobs_arr[i].pid;
+        if (pid == 0 || pid == fg_pid) continue; // No job found for this pid or it is the fg process
 
-    while ((pid = waitpid(-1, &status, WNOHANG | WUNTRACED | WCONTINUED)) > 0) {
-        int job_id = get_id(pid);
-        if (WIFEXITED(status) || WIFSIGNALED(status)) { //child terminated by signal/exit
-            remove_job(job_id);
-        }
-        else if (WIFSTOPPED(status)) {                 // child had sttoped
-            update_job_status(job_id, JOB_STOPPED);
-        }
-        else if (WIFCONTINUED(status)) {               // child resumed
-            update_job_status(job_id, JOB_RUNNING_BG);
+        //check system status for the process the job is represnting:
+        pid_t res = waitpid(pid, &status, WNOHANG);
+        //handle status only if the status has changed: (else continue)
+        if(res > 0) {
+            if (WIFEXITED(status) || WIFSIGNALED(status)) { // Job has exited or was killed by signal - remove from list
+                remove_job(i);
+            }
+
+            else if(WIFSTOPPED(status)) { // Job has stopped - update its status
+                update_job_status(i, JOB_STOPPED); 
+            }
+            else if(WIFCONTINUED(status)) { // Job has continued - update its status
+                update_job_status(i, JOB_RUNNING_BG); 
+            }
         }
     }
 }

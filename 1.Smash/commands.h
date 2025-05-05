@@ -29,6 +29,8 @@
 #define SMASH_SUCCESS 0
 #define SMASH_FAIL 1
 #define SMASH_ERROR 2
+#define SMASH_QUIT 3 
+
 
 
 extern job jobs_arr[MAX_JOBS]; // array of jobs
@@ -94,13 +96,13 @@ int parseCommandExample(char* line);
 int showpid();
 int pwd();
 int cd(char* path);
-int jobs();
-int smash_kill(int signum, char* job_id);
+int s_jobs();
+int smash_kill(int signum, char* job_id); //perhaps parent
 int fg(char* job_id);
 int empty_fg();
 int bg(char* job_id);
 int empty_bg();
-int diff(char* file1, char* file2);
+int diff(char* file1, char* file2); //perhaps parent
 int quit();
 int quit_kill();
 
