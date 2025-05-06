@@ -1,4 +1,5 @@
 //jobs.c
+#define _POSIX_C_SOURCE 200809L
 
 /*=============================================================================
 * includes, defines, usings
@@ -182,8 +183,8 @@ void update_job_status(int job_id, int status) {
         return;  
 
     jobs_arr[job_id].status = status;
-    if (status == JOB_RUNNING_BG)               //TODO: do we need to reset the time?
-        jobs_arr[job_id].start_time = time(NULL);
+    /*if (status == JOB_RUNNING_BG)               //TODO: do we need to reset the time?
+        jobs_arr[job_id].start_time = time(NULL);*/
            
     return;
 }

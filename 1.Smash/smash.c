@@ -196,7 +196,7 @@ int handle_builtin(Command *cmd) {
         
     }*/
 
-    return 2; // not a built-in
+    return 10; // not a built-in
 }
 
 /**
@@ -260,7 +260,6 @@ int handle_bg (Command *cmd, pid_t pid) {
  */
 int launch_external(Command *cmd) {
     if (execvp(cmd->args[0], cmd->args) == -1) { 
-        perror("smash error: execvp failed"); //TODO: remove before submition
         exit(EXIT_FAILURE);
         return ERROR; // this line will never be reached, but added for safety 
     }
@@ -356,7 +355,7 @@ int main(int argc, char* argv[])
             else if (pid == 0) { // Child process
                 setpgrp(); // Set the child to a new process group
                 int is_internal = handle_builtin(&cmd); // check if the command is a built-in command
-                if(is_internal == 2) { // not a built-in command
+                if(is_internal == 10) { // not a built-in command
                     launch_external(&cmd); // launch the external command
                 } 
                 exit(0); // Exit child process after executing the command

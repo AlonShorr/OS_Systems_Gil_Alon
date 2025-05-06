@@ -143,11 +143,12 @@ int smash_kill(int signum, char* job_id){
 	
 	pid_t job_pid = get_pid(jobs_arr[job_index]);
 	if (kill(job_pid, signum) == -1) {
-        perror("smash error: kill");
+        fprintf(stderr, "smash error: kill: invalid arguments\n");
 		return SMASH_ERROR;
     } else {
         printf("signal %d sent to pid %d\n", signum, job_pid); 
-    }
+	}
+	
 	return SMASH_SUCCESS;
 }
 
@@ -300,8 +301,10 @@ int diff(char* file1, char* file2){
 		fprintf(stderr, "smash error: diff: expected 2 arguments\n");
 		return SMASH_FAIL;
 	}	
+
 	struct stat path_stat1;
 	struct stat path_stat2;
+
 	// Check if the paths exist
 	if (stat(file1, &path_stat1) != 0 || stat(file2, &path_stat2) != 0) { 
 		fprintf(stderr, "smash error: diff: expected valid paths for files\n");
@@ -312,6 +315,11 @@ int diff(char* file1, char* file2){
 		fprintf(stderr, "smash error: diff: paths are not files\n");
 		return SMASH_FAIL; //perhaps need to be SMASH_ERROR
 	}
+
+	if (!S_ISREG(path_stat1.st_mode) || !S_ISREG(path_stat2.st_mode)) {
+        fprintf(stderr, "smash error: diff: paths are not files\n");
+		return SMASH_FAIL;
+    }
 
 	//compare bit by bit
 	FILE *fp1 = fopen(file1, "rb");
@@ -324,24 +332,32 @@ int diff(char* file1, char* file2){
         return SMASH_ERROR;  // error opening one of the files
     }
     int ch1, ch2;
-    do {
+	while (1) {
         ch1 = fgetc(fp1);
         ch2 = fgetc(fp2);
+
         if (ch1 != ch2) {
             fclose(fp1);
             fclose(fp2);
-            return SMASH_ERROR;  // Files are different
+			printf("1\n");
+            return SMASH_ERROR; // Files are different
         }
-    } while (ch1 != EOF && ch2 != EOF);
+
+        if (ch1 == EOF || ch2 == EOF) break;
+    }
 
     fclose(fp1);
     fclose(fp2);
-
     if (ch1 == EOF && ch2 == EOF) {
-        return SMASH_SUCCESS;  // Files are identical
+        printf("0\n");
+		return SMASH_SUCCESS;  // Files are identical
     } else {
+		printf("1\n");
+
         return SMASH_ERROR;  // One file ended earlier -> files are different
     }
 }
+
+
 
 
