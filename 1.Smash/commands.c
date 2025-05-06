@@ -1,5 +1,5 @@
 #include "commands.h"
-
+#include <signal.h>
 //=============================================================================
 /**
  * @brief global variables to track fg process that are defined in smash.c

@@ -1,6 +1,6 @@
 // signals.c
 #include "signals.h"
-
+#include <signal.h>
 extern int signal_flag;
 
 //required functions for signal handling
