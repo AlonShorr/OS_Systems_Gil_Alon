@@ -1,5 +1,7 @@
 #include "commands.h"
 #include <signal.h>
+#define _POSIX_C_SOURCE 200809L
+
 //=============================================================================
 /**
  * @brief global variables to track fg process that are defined in smash.c
