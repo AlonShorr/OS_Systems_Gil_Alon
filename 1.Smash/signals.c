@@ -1,7 +1,8 @@
 // signals.c
+#define _POSIX_C_SOURCE 200809L
 #include "signals.h"
 #include <signal.h>
-#define _POSIX_C_SOURCE 200809L
+
 extern int signal_flag;
 
 //required functions for signal handling
