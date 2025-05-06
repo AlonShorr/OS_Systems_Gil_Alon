@@ -3,7 +3,7 @@ CC = gcc
 CFLAGS = -g -Wall
 
 # Target name
-TARGET = smash.exe
+TARGET = smash
 
 # Object files
 OBJS = smash.o commands.o signals.o jobs.o
