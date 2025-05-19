@@ -3,6 +3,8 @@
 #include "logger.hpp"
 
 
+
+
 /*=============================================================================
     Helper Functions
 =============================================================================*/
@@ -19,6 +21,7 @@ bool account_exists(const vector<account>& accounts, int account_id) {
         bank Class Methods & others
     =============================================================================*/
 
+//static rw_lock_t bank_lock;
     static rw_lock_t bank_lock;
 
     // create account class - need to kick to another file + fix functions
@@ -55,17 +58,17 @@ int BANK::get_random(int low, int high) {
     return dist(gen);
 }
 
-void BANK::tax(){
-    
+void BANK::tax(){  
     double need_to_pay = 0;
     int tax_precent = get_random(1, 5);
     
     //lock cuz atomic + loop to lock all accounts
-    writer_lock(&bank_lock);   
+    writer_lock(&bank_lock); // Lock for writing
     for (auto& acc : accounts) {
-        pthread_mutex_lock(&acc.account_lock);
+        writer_lock(&acc.account_lock);
+        reader_lock(&acc.account_lock);
     }
-
+    reader_lock(&bank_lock); // Lock for reading - we dont want people to read while we still taxing untill we taxed all accounts  
     //write to log all taxes
     for (const auto& acc : accounts) {
         need_to_pay = acc.balance * tax_precent / 100;
@@ -75,10 +78,11 @@ void BANK::tax(){
         write_log(std::string(buffer));
         withdraw(acc.id, acc.password, need_to_pay);
     }
-     
     //unlock cuz atomic + unlock bank for adding/deleting accounts
+    reader_unlock(&bank_lock); // Lock for reading   
     for (auto& acc : accounts) {
-        pthread_mutex_unlock(&acc.account_lock);
+        reader_unlock(&acc.account_lock);
+        writer_unlock(&acc.account_lock);
     }
     writer_unlock(&bank_lock);
 }
@@ -87,14 +91,11 @@ void BANK::print_accounts(){
 
     printf("\033[2J");
     printf("\033[1;1H");
-
-
-    //lock so no one will add/delete acc + loop to lock all accounts
+    //lock so no one will add/delete acc + loop to lock all accounts, we dont care about readers - there are no changes in data
     writer_lock(&bank_lock);   
     for (auto& acc : accounts) {
-        pthread_mutex_lock(&acc.account_lock);
+        writer_lock(&acc.account_lock);
     }
-
     //sort accounts by id - make a copy of our accounts vector
     std::vector<Account*> sorted_accounts = accounts;
     std::sort(sorted_accounts.begin(), sorted_accounts.end(), [](Account* a, Account* b) {return a->id < b->id;});
@@ -103,9 +104,31 @@ void BANK::print_accounts(){
     for (const auto acc : sorted_accounts) {
         std::cout << "Account " << acc.id << ": Balance - " << acc.balance << "$, Account Password - " << acc.password << "\n";
     }
+    reader_lock(&bank_lock); //now we do care, we dont want readerd to reas while half deleted
+    for (auto& acc : accounts) {
+        reader_lock(&acc.account_lock);
+    }
+    for (auto it = ATMs.begin(); it != ATMs.end(); ) {
+        ATM* atm = *it;
+        if (atm->is_closed()) { // Check if ATM is marked closed
+            int ret = pthread_tryjoin_np(atm->get_thread(), nullptr); // Try to join without blocking
+            if (ret == 0) {
+                delete atm; // Join succeeded — thread is done
+                it = ATMs.erase(it);
+            }
+            else{
+                ++it; // Join not possible yet — thread still running
+            }
+        }
+        else {
+            ++it;
+        }
+    }
+    reader_unlock(&bank_lock);
     //loop to unlock all accounts + unlock bank for adding/deleting accounts
     for (auto& acc : accounts) {
-        pthread_mutex_unlock(&acc.account_lock);
+        reader_unlock(&acc.account_lock);
+        writer_unlock(&acc.account_lock);
     }
     writer_unlock(&bank_lock);
 }
@@ -176,6 +199,8 @@ int main (int argc, char *argv[]) {
     const int atm_num = argc - 2;
     std::vector<FILE*> input_files(atm_num);
     init_log("log.txt");
+    init_rw_lock(&bank_lock);
+    total_balance = 0;
 
     // 1) Loop through input files
     for (int i = 1; i < atm_num + 1; i++) {
@@ -199,10 +224,35 @@ int main (int argc, char *argv[]) {
         ATMs[i]->start(); //starts and runs the ATM thread
     }
 
-    // 3) Wait for all ATM threads to finish
-    for (int i = 0; i < atm_num; i++) {
-        ATMs[i]->join();
+    //2.5) start timer
+    auto start_time = steady_clock::now();
+    auto last_tax_time = start_time;
+    auto last_print_time = start_time;
+
+    // 3) Wait for all ATM threads to finish, while taxing and printing accounts
+    while (true) {
+        auto now = steady_clock::now();
+        // Check if 0.5s passed since last print
+        if (duration_cast<milliseconds>(now - last_print_time).count() >= 500) {
+            print_accounts();
+            last_print_time = now;
+        }
+        // Check if 3s passed since last tax
+        if (duration_cast<seconds>(now - last_tax_time).count() >= 3) {
+            tax();
+            last_tax_time = now;
+        }
+
+        if (thread_counter == atm_num){
+            for (int i = 0; i < atm_num; i++) {
+                ATMs[i]->join();
+            }
+            break;
+        }
+        // PERHAPS DELETE - tiny sleep to avoid CPU spinning at 100%
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
+
 
     // 4) Clean up memory and close files
     delete main_bank;
@@ -211,6 +261,8 @@ int main (int argc, char *argv[]) {
     }
 
     close_log();
+    destroy_rw_lock(&bank_lock);
+
 
     
     return 0;
