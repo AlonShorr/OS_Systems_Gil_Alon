@@ -30,7 +30,7 @@ vector<string> parse(const string& line) {
     ATM Class Methods
 =============================================================================*/
 
-ATM::ATM(int id, FILE *input_file, bank *bank) : 
+ATM::ATM(int id, FILE *input_file, bank *bank, bool closed = false) : 
     id(id), input_file(input_file), main_bank(bank), balance(0) {};
 
 ATM::~ATM() {
@@ -57,6 +57,8 @@ int ATM::run() {
         if (res == ERROR) 
            return ERROR; // Invalid command 
         usleep(100000); // Sleep for 100 miliSeconds
+        if(this->closed) //ATM was requested to stop
+            break;
     }
     return SUCCESS;
 }
@@ -65,7 +67,7 @@ int ATM::execute(const vector<string>& args) {
     if(args.empty()) return;
     sleep(1); 
     if(args[0] == "O")
-        return main_bank->open_new_account(stoi(args[1]), stoi(args[2]), stod(args[3]));
+        return main_bank->open_new_account(stoi(args[1]), stoi(args[2]), stod(args[3]), this->id);
     else if(args[0] == "D")
         return main_bank->deposit(stoi(args[1]), stod(args[2]));
     else if(args[0] == "W")

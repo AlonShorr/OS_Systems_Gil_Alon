@@ -3,25 +3,8 @@
 
 #include "atm.hpp"
 #include "includes.hpp"
+#include "account.hpp"
 using namespace std;
-
-class account {
-    private:
-        int id;                            // Account ID
-        int password;                      // Account password
-        double balance;                    // Account balance
-        pthread_mutex_t account_lock;     // Mutex for thread safety
-
-    public:
-        accout();
-        account(int id, double balance);    // Constructor
-        ~account();                         // Destructor
-        int getId();                       // Get account ID
-        int getPassword();                 // Get account password
-        void setPassword(int password);    // Set account password
-        double getBalance();                // Get balance
-        void setBalance(double amount);    // Set balance
-};
 
 class bank {
     private:
@@ -47,7 +30,7 @@ class bank {
          * @brief: Bank functions to manage accounts
          * @return: 0 on success, 1 on failure
          */
-        int open_new_account(int account_id, int password, double initial_balance); 
+        int open_new_account(int account_id, int password, double initial_balance, int); 
         int deposit(int account_id, double amount);   
         int withdraw(int account_id, double amount);    
         int check_balance(int account_id); 

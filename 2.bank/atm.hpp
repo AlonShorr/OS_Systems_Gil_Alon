@@ -8,6 +8,7 @@ class ATM {
     private:
         int id;                            
         double balance;
+        bool closed;                     // Flag to indicate if the ATM is closed
         FILE* input_file;                // File pointer for ATM input file
         bank* main_bank;                 // Pointer to the main bank object
         pthread_t atm_thread;
@@ -16,7 +17,7 @@ class ATM {
         /**
          * @brief: ATM constructor and destructor
          */
-        ATM(int id, FILE* input_file, bank* bank);        
+        ATM(int id, FILE* input_file, bank* bank, bool closed = false);        
         ~ATM();
 
         /**
