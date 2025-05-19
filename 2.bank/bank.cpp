@@ -15,15 +15,13 @@ bool account_exists(const vector<account>& accounts, int account_id) {
     return false;
 }
 
-/*=============================================================================
-    bank Class Methods & others
-=============================================================================*/
+    /*=============================================================================
+        bank Class Methods & others
+    =============================================================================*/
 
-static rw_lock_t bank_lock;
+    static rw_lock_t bank_lock;
 
-
-
-// create account class - need to kick to another file + fix functions
+    // create account class - need to kick to another file + fix functions
     account() {
         pthread_mutex_init(&lock, nullptr);
     }
@@ -113,19 +111,25 @@ void BANK::print_accounts(){
 }
 
 //ALON===========================================
-
+int bank::getAccount_index(int id) {
+    for (size_t i = 0; i < accounts.size(); ++i) {
+        if (accounts[i].getId() == id) {
+            return i;
+        }
+    }
+    return -1;
+}
 //TODO: to implement!
 /**
  * @brief: Bank functions to manage accounts
  * @return: 0 on success, 1 on failure
  */
  
-int open_new_account(int account_id, int password, double initial_balance, int atm_id) {
+int bank::open_new_account(int account_id, int password, double initial_balance, int atm_id) {
     ostringstream oss;
     if(account_id <= 0 || password <= 0 || initial_balance < 0) 
         return ERROR;
     else if(account_exists(this->accounts, account_id)) {
-        
         oss << "Error " << atm_id << ": Your transaction failed - account with the same id exists";
         write_log(oss.str());
         return ERROR;
@@ -139,13 +143,34 @@ int open_new_account(int account_id, int password, double initial_balance, int a
 }
 
 
-//int deposit(int account_id, double amount);   
+int bank::deposit(int account_id, int account_password, double amount, int atm_id){
+    
+    if(account_id <= 0 || account_password <= 0 || amount < 0)
+        return ERROR;
+
+    int index = getAccount_index(account_id);
+    ostringstream oss;
+
+    if(accounts[index].getPassword() != account_password){
+        oss << "Error " << atm_id << ": Your transaction failed - password for account id "
+        << account_id << " is incorrect";
+        write_log(oss.str());
+        return ERROR;   
+    }
+    double newBalance = accounts[index].getBalance() + amount;
+    accounts[index].setBalance(newBalance);
+    oss << atm_id << ": Account " << account_id
+    << " new balance is " << newBalance
+    << " after " << amount << " $ was deposited";
+    write_log(oss.str());
+    return SUCCESS;
+}
+
 //int withdraw(int account_id, double amount);    
 //int check_balance(int account_id); 
 //int close_account(int account_id, int password); 
 //int transfer(int from_account_id, int to_account_id, double amount);
 //int close_atm(int id); 
-
 
 int main (int argc, char *argv[]) {
     const int atm_num = argc - 2;

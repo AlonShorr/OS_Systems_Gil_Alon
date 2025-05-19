@@ -25,7 +25,8 @@ class ATM {
          */
         int get_id();                       
         double get_balance();                 
-        void set_balance(double amount); 
+        void set_balance(double amount);
+        pthread_t ATM::get_thread();
 
         /**
          * @brief: funcions to manage ATM threads

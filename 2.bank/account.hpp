@@ -2,6 +2,7 @@
 #define ACCOUNT_H
 
 #include "includes.hpp"
+#include "read_write_lock.hpp"
 using namespace std;
 
 class account {
@@ -9,7 +10,7 @@ class account {
         int id;                            // Account ID
         int password;                      // Account password
         double balance;                    // Account balance
-        pthread_mutex_t account_lock;     // Mutex for thread safety
+        rw_lock_t account_lock;     // Mutex for thread safety
 
     public:
         account(int id, int password, double balance);    // Constructor
