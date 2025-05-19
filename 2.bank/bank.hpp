@@ -5,12 +5,14 @@
 #include "includes.hpp"
 #include "account.hpp"
 using namespace std;
+//global variables
+int thread_counter = 0;
 
 class bank {
     private:
         std::vector<account> accounts;   // Indexed by account ID
         std::vector<ATM> ATMs;           // List of ATMs
-        pthread_mutex_t bank_lock;       // Protects account creation/deletion
+        rw_lock_t bank_lock;       // Protects account creation/deletion
         double total_balance;          // Total balance in the bank
 
     public:
