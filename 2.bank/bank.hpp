@@ -9,13 +9,12 @@ using namespace std;
 int thread_counter = 0;
 
 class bank {
-    private:
+    public:
         vector<account> accounts;   // Indexed by account ID
         vector<ATM> ATMs;           // List of ATMs
         rw_lock_t bank_lock;       // Protects account creation/deletion
         double total_balance;          // Total balance in the bank
 
-    public:
         bank();
         ~bank();
     
@@ -39,7 +38,7 @@ class bank {
         int check_balance(int account_id, int password, int atm_id);
         int close_account(int account_id, int password, int atm_id); 
         int transfer(int from_account_id, int password, int to_account_id, double amount, int atm_id);
-        int close_atm(int id);
+        int close_atm(int target_atm_id, int killer_atm_id);
         
 };
 

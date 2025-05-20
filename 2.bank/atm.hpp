@@ -5,7 +5,7 @@
 #include "bank.hpp"
 
 class ATM {
-    private:
+    public:
         int id;                            
         double balance;
         bool closed;                     // Flag to indicate if the ATM is closed
@@ -13,7 +13,6 @@ class ATM {
         bank* main_bank;                 // Pointer to the main bank object
         pthread_t atm_thread;
 
-    public:
         /**
          * @brief: ATM constructor and destructor
          */

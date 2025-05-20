@@ -6,14 +6,18 @@
 /*=============================================================================
     Helper Functions
 =============================================================================*/
-// bool account_exists(const vector<account>& accounts, int account_id) {
-//     for (size_t i = 0; i < accounts.size(); ++i) {
-//         if (accounts[i].getId() == account_id) {
-//             return true;
-//         }
-//     }
-//     return false;
-// }
+int bank::getAccount_index(int id) {
+    for (size_t i = 0; i < accounts.size(); ++i) {
+        writer_lock(&accounts[i].account_lock);
+        if (accounts[i].getId() == id) {
+            return i;  //we unlock in function
+        }
+        else{
+            writer_unlock(&accounts[i].account_lock);
+        }
+    }
+    return -1;
+}
 
 int bank::get_random(int low, int high) {
     static std::random_device rd;   // Seed generator
@@ -24,7 +28,15 @@ int bank::get_random(int low, int high) {
 /*=============================================================================
     bank Class Methods & others
 =============================================================================*/
-void bank::tax(){  
+bank::bank() : total_balance(0) {
+    init_rw_lock(&bank_lock);
+}
+
+bank::~bank() {
+    destroy_rw_lock(&bank_lock); 
+}
+
+void bank::tax() {  
     double need_to_pay = 0;
     int tax_precent = get_random(1, 5);
     
@@ -54,7 +66,6 @@ void bank::tax(){
 }
 
 void bank::print_accounts(){
-
     printf("\033[2J");
     printf("\033[1;1H");
     //lock so no one will add/delete acc + loop to lock all accounts, we dont care about readers - there are no changes in data
@@ -75,16 +86,9 @@ void bank::print_accounts(){
         reader_lock(&acc.account_lock);
     }
     for (auto it = ATMs.begin(); it != ATMs.end(); ) {
-        ATM* atm = *it;
-        if (atm->is_closed()) { // Check if ATM is marked closed
-            int ret = pthread_tryjoin_np(atm->get_thread(), nullptr); // Try to join without blocking
-            if (ret == 0) {
-                delete atm; // Join succeeded — thread is done
-                it = ATMs.erase(it);
-            }
-            else{
-                ++it; // Join not possible yet — thread still running
-            }
+        if (it->closed()) { // ATM is marked closed
+            pthread_join(it->get_thread(), nullptr); // Wait for thread to finish
+            it = ATMs.erase(it); // Erase returns the next valid iterator
         }
         else {
             ++it;
@@ -99,26 +103,11 @@ void bank::print_accounts(){
     writer_unlock(&bank_lock);
 }
 
-int bank::getAccount_index(int id) {
-    for (size_t i = 0; i < accounts.size(); ++i) {
-        writer_lock(&accounts[i].read_write_lock);
-        if (accounts[i].getId() == id) {
-            return i;  //we unlock in function
-        }
-        else{
-            writer_unlock(&accounts[i].read_write_lock);
-        }
-    }
-    return -1;
-}
-
 int bank::open_new_account(int account_id, int password, double initial_balance, int atm_id) {
     ostringstream oss;
     int index;
-    if(account_id <= 0 || password <= 0 || initial_balance < 0) 
-        return ERROR;
-    else if((index = getAccount_index(account_id)) != -1) {
-        writer_unlock(&accounts[index])
+    if((index = getAccount_index(account_id)) != -1) {
+        writer_unlock(&accounts[index].account_lock)
         oss << "Error " << atm_id << ": Your transaction failed - account with the same id exists";
         write_log(oss.str());
         return ERROR;
@@ -131,21 +120,21 @@ int bank::open_new_account(int account_id, int password, double initial_balance,
     return SUCCESS;
 }
 
-int bank::deposit(int account_id, int account_password, double amount, int atm_id){
+int bank::deposit(int account_id, int account_password, double amount, int atm_id) {
     ostringstream oss;
     int index = getAccount_index(account_id); // locked
     if(accounts[index].getPassword() != account_password){
-        writer_unlock(&accounts[index]);
+        writer_unlock(&accounts[index].account_lock);
         oss << "Error " << atm_id << ": Your transaction failed - password for account id "
         << account_id << " is incorrect";
         write_log(oss.str());
         return ERROR;   
     }
     double newBalance = accounts[index].getBalance() + amount;
-    reader_lock(&accounts[index]);
+    reader_lock(&accounts[index].account_lock);
     accounts[index].setBalance(newBalance);
-    reader_unlock(&accounts[index]);
-    writer_unlock(&accounts[index]);
+    reader_unlock(&accounts[index].account_lock);
+    writer_unlock(&accounts[index].account_lock);
 
     oss << atm_id << ": Account " << account_id
     << " new balance is " << newBalance
@@ -158,24 +147,24 @@ int bank::withdraw(int account_id, int password, double amount, int atm_id) {
     ostringstream oss;
     int index = getAccount_index(account_id); //lock
     if(accounts[index].getPassword() != password){
-        writer_unlock(&accounts[index]);
+        writer_unlock(&accounts[index].account_lock);
         oss << "Error " << atm_id << ": Your transaction failed - password for account id "
         << account_id << " is incorrect";
         write_log(oss.str());
         return ERROR;     
     }
     if(accounts[index].getBalance() < amount){
-        writer_unlock(&accounts[index]);
+        writer_unlock(&accounts[index].account_lock);
         oss << "Error " << atm_id << ": Your transaction failed – account id "
         << account_id << " balance is lower than " << amount;
         write_log(oss.str());
         return ERROR;
     }
     double newBalance = accounts[index].getBalance() - amount;
-    reader_lock(&accounts[index]);
+    reader_lock(&accounts[index].account_lock);
     accounts[index].setBalance(newBalance);
-    reader_unlock(&accounts[index]);
-    writer_unlock(&accounts[index]);    
+    reader_unlock(&accounts[index].account_lock);
+    writer_unlock(&accounts[index].account_lock);    
     oss << atm_id << ": Account " << account_id << " new balance is " 
     << newBalance << " after " << amount << " $ was withdrawn";
     write_log(oss.str());
@@ -186,55 +175,56 @@ int bank::check_balance(int account_id, int password, int atm_id) {
     ostringstream oss;
     int index = getAccount_index(account_id);
     if(accounts[index].getPassword() != password){
-        writer_unlock(&accounts[index]);
+        writer_unlock(&accounts[index].account_lock);
         oss << "Error " << atm_id << ": Your transaction failed - password for account id "
         << account_id << " is incorrect";
         write_log(oss.str());
         return ERROR;   
     }
     double balance = accounts[index].getBalance();
-    writer_unlock(&accounts[index]);
+    writer_unlock(&accounts[index].account_lock);
     oss << atm_id << ": Account " << account_id << " balance is " << balance;
     write_log(oss.str());
     return SUCCESS;
 }
 
 int bank::close_account(int account_id, int password, int atm_id) {
-    if(account_id <= 0 || password <= 0)
-        return ERROR;
+    //in this function we MUST close everything - we are deleting accounts. because we use vector it shifts everything.
+    //we cant afford both reading and writing to any account because all the indexes are gonna change.for example:
+    //we dont want someone to get index to deposit from, when shift all acc, and then do a deposit - the lock will be on the wrong index
 
-    int index = getAccount_index(account_id);
     ostringstream oss;
-
+    int index = getAccount_index(account_id); //acc locked
     if(accounts[index].getPassword() != password){
+        writer_unlock(&accounts[index].account_lock);
         oss << "Error " << atm_id << ": Your transaction failed - password for account id "
         << account_id << " is incorrect";
         write_log(oss.str());
         return ERROR;   
     }
-
-    //TODO: to edit
+    writer_unlock(&accounts[index].account_lock); //unlock to not be in deadlock later
+    writer_lock(&bank_lock);   
+    for (auto& acc : accounts) {
+        writer_lock(&acc.account_lock);
+        reader_lock(&acc.account_lock);
+    }
+    reader_lock(&bank_lock);    
+    oss << atm_id << ": Account " << account_id << " is now closed. Balance was " << accounts[index].getBalance();
     accounts.erase(accounts.begin() + index);
-    oss << "Account " << account_id << " was closed";
+    reader_unlock(&bank_lock);
+    for (auto& acc : accounts) {
+        reader_unlock(&acc.account_lock);
+        writer_unlock(&acc.account_lock);
+    }
+    writer_unlock(&bank_lock);
     write_log(oss.str());
     return SUCCESS;
-    // until here
 }
 
-
-//int close_atm(int id); 
-//int withdraw(int account_id, double amount);    
-//int check_balance(int account_id); 
-//int close_account(int account_id, int password); 
-
-
-
-int transfer(int from_account_id, int password, int to_account_id, double amount, int atm_id){
-    
+int transfer(int from_account_id, int password, int to_account_id, double amount, int atm_id){   
     ostringstream oss;
     int from_new_amount;
-    int to_new_amount;
-    
+    int to_new_amount;  
     int from_index = getAccount_index(from_account_id); //lock account
     if(accounts[from_index].getPassword() != password){
         writer_unlock(&accounts[from_index].read_write_lock);
@@ -270,14 +260,23 @@ int transfer(int from_account_id, int password, int to_account_id, double amount
     }  
 }
 
-//int close_atm(int id){}
-
-
-
-
-
-
-
+int close_atm(int target_atm_id, int killer_atm_id){
+    ostringstream oss;
+    bool is_in = false;  
+    for (auto it = ATMs.begin(); it != ATMs.end(); ) {
+        if (it->id == target_atm_id) { // ATM is marked closed
+            it->closed = true;
+            is_in = true;
+        }
+    }
+    if (is_in == true){
+        oss << "Error " << killer_atm_id << ": Your transaction failed – ATM ID " << target_atm_id << " does not exist";
+    }
+    else{
+        oss << "Bank: ATM " << killer_atm_id << " closed " << target_atm_id << " successfully";
+    }   
+    write_log(oss.str());
+}
 
 
 
@@ -285,8 +284,7 @@ int main (int argc, char *argv[]) {
     const int atm_num = argc - 2;
     std::vector<FILE*> input_files(atm_num);
     init_log("log.txt");
-    init_rw_lock(&bank_lock);
-    total_balance = 0;
+    int total_balance = 0;
 
     // 1) Loop through input files
     for (int i = 1; i < atm_num + 1; i++) {
@@ -303,11 +301,15 @@ int main (int argc, char *argv[]) {
 
     // 2) Create the main bank object, ATM list and threads
     bank* main_bank = new bank();
-    std::vector<ATM *> ATMs(atm_num);
-
+    
+    //put inside constractor:
+        //std::vector<ATM *> ATMs(atm_num);
+        //init_rw_lock(&bank_lock);
+    
+    
     for (int i = 0; i < atm_num; i++) {
-        ATMs[i] = new ATM(i + 1, input_files[i], main_bank);
-        ATMs[i]->start(); //starts and runs the ATM thread
+        ATMs.emplace_back(i + 1, input_files[i], main_bank); // construct in-place
+        ATMs[i].start(); // call start on the constructed object
     }
 
     //2.5) start timer
@@ -341,13 +343,15 @@ int main (int argc, char *argv[]) {
 
 
     // 4) Clean up memory and close files
+    
     delete main_bank;
-    for (int i = 0; i < atm_num; ++i) {
-        delete ATMs[i]; // the files are closed in the d'tor
-    }
-
+    //inside destructor:    
+        //for (int i = 0; i < atm_num; ++i) {
+        //    delete ATMs[i]; // the files are closed in the d'tor
+        //}
+        //destroy_rw_lock(&bank_lock);
+    
     close_log();
-    destroy_rw_lock(&bank_lock);
 
     return 0;
 }

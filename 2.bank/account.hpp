@@ -6,13 +6,13 @@
 using namespace std;
 
 class account {
-    private:
+    public:
         int id;                            // Account ID
         int password;                      // Account password
         double balance;                    // Account balance
-        rw_lock_t account_lock;     // Mutex for thread safety
 
-    public:
+        rw_lock_t account_lock;     // rw_lock for thread safety
+
         account(int id, int password, double balance);    // Constructor
         ~account();                         // Destructor
         int getId() const;                       // Get account ID

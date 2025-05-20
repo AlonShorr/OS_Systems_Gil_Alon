@@ -46,20 +46,21 @@ void ATM::set_balance(double amount) {balance = amount;}
 pthread_t ATM::get_thread() {return atm_thread;}
 void ATM::start() { pthread_create(&atm_thread, nullptr, runATM, this); }
 void ATM::join() { pthread_join(atm_thread, nullptr); }
+
 int ATM::run()
 {
     char buffer[128]; // line buffer
     int res = 0;
     while (fgets(buffer, sizeof(buffer), input_file) != nullptr)
     {
+        if (this->closed) // ATM was requested to stop
+            break;        
         string line(buffer);
         vector<string> args = parse(line);
         res = execute(args); // 1 second delay inside.
         if (res == ERROR)
             return ERROR; // Invalid command
         usleep(100000);   // Sleep for 100 miliSeconds
-        if (this->closed) // ATM was requested to stop
-            break;
     }
     thread_counter++; //global variable (Gil)
     return SUCCESS;
@@ -68,20 +69,20 @@ int ATM::run()
 int ATM::execute(const vector<string>& args) {
     if(args.empty()) return;
     sleep(1); 
-    if(args[0] == "O")
+    if (args[0] == "O")
         return main_bank->open_new_account(stoi(args[1]), stoi(args[2]), stod(args[3]), this->id);
-    else if(args[0] == "D")
+    else if (args[0] == "D")
         return main_bank->deposit(stoi(args[1]), stoi(args[2]), stod(args[3]), this->id);
-    else if(args[0] == "W")
+    else if (args[0] == "W")
         return main_bank->withdraw(stoi(args[1]), stoi(args[2]), stod(args[3]), this->id);
-    else if(args[0] == "B")
+    else if (args[0] == "B")
         return main_bank->check_balance(stoi(args[1]), stoi(args[2]), this->id);
-    else if(args[0] == "Q")
+    else if (args[0] == "Q")
         return main_bank->close_account(stoi(args[1]), stoi(args[2]), this->id);
-    else if(args[0] == "T")
+    else if (args[0] == "T")
         return main_bank->transfer(stoi(args[1]), stoi(args[2]), stod(args[3]), this->id);
     else if (args[0] == "C") 
-        return main_bank->close_atm(stoi(args[1]));
+        return main_bank->close_atm(stoi(args[1]), this->id);
     
     return ERROR; // Invalid command
 }
