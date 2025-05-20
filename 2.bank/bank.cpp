@@ -165,7 +165,6 @@ int bank::open_new_account(int account_id, int password, double initial_balance,
     return SUCCESS;
 }
 
-
 int bank::deposit(int account_id, int account_password, double amount, int atm_id){
     
     if(account_id <= 0 || account_password <= 0 || amount < 0)
