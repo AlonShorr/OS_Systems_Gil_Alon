@@ -10,8 +10,8 @@ int thread_counter = 0;
 
 class bank {
     private:
-        std::vector<account> accounts;   // Indexed by account ID
-        std::vector<ATM> ATMs;           // List of ATMs
+        vector<account> accounts;   // Indexed by account ID
+        vector<ATM> ATMs;           // List of ATMs
         rw_lock_t bank_lock;       // Protects account creation/deletion
         double total_balance;          // Total balance in the bank
 
@@ -34,10 +34,17 @@ class bank {
          */
         int open_new_account(int account_id, int password, double initial_balance, int);
         int deposit(int account_id, int account_password, double amount, int atm_id);
+<<<<<<< HEAD
         int withdraw(int account_id, int password, double amount, int atm_id);
         int check_balance(int account_id, int password, int atm_id);
         int close_account(int account_id, int password, int atm_id); 
         int transfer(int from_account_id, int to_account_id, double amount);
+=======
+        int withdraw(int account_id, double amount);
+        int check_balance(int account_id); 
+        int close_account(int account_id, int password); 
+        int transfer(int from_account_id, int password, int to_account_id, double amount, int atm_id);
+>>>>>>> dacea57 (transfer)
         int close_atm(int id); 
         
 };
