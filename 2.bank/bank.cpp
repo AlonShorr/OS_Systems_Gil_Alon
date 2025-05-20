@@ -2,7 +2,7 @@
 #include "bank.hpp"
 #include "logger.hpp"
 
-//ALON YOU ARE MY TRUE LOVE
+
 /*=============================================================================
     Helper Functions
 =============================================================================*/
@@ -19,14 +19,14 @@ bool account_exists(const vector<account>& accounts, int account_id) {
     bank Class Methods & others
 =============================================================================*/
 
-int BANK::get_random(int low, int high) {
+int bank::get_random(int low, int high) {
     static std::random_device rd;   // Seed generator
     static std::mt19937 gen(rd());  // Mersenne Twister RNG
     std::uniform_int_distribution<> dist(low, high);
     return dist(gen);
 }
 
-void BANK::tax(){  
+void bank::tax(){  
     double need_to_pay = 0;
     int tax_precent = get_random(1, 5);
     
@@ -55,7 +55,7 @@ void BANK::tax(){
     writer_unlock(&bank_lock);
 }
 
-void BANK::print_accounts(){
+void bank::print_accounts(){
 
     printf("\033[2J");
     printf("\033[1;1H");
@@ -101,7 +101,6 @@ void BANK::print_accounts(){
     writer_unlock(&bank_lock);
 }
 
-//ALON===========================================
 int bank::getAccount_index(int id) {
     for (size_t i = 0; i < accounts.size(); ++i) {
         if (accounts[i].getId() == id) {
@@ -151,9 +150,78 @@ int bank::deposit(int account_id, int account_password, double amount, int atm_i
     return SUCCESS;
 }
 
-//int withdraw(int account_id, double amount);    
-//int check_balance(int account_id); 
-//int close_account(int account_id, int password); 
+int bank::withdraw(int account_id, int password, double amount, int atm_id) { 
+    if(account_id <= 0 || password <= 0 || amount < 0)
+        return ERROR;
+
+    int index = getAccount_index(account_id);
+    ostringstream oss;
+
+    if(accounts[index].getPassword() != password){
+        oss << "Error " << atm_id << ": Your transaction failed - password for account id "
+        << account_id << " is incorrect";
+        write_log(oss.str());
+        return ERROR;     
+    }
+
+    if(accounts[index].getBalance() < amount){
+        oss << "Error " << atm_id << ": Your transaction failed – account id "
+        << account_id << " balance is lower than " << amount;
+        write_log(oss.str());
+        return ERROR;
+    }
+
+    double newBalance = accounts[index].getBalance() - amount;
+    accounts[index].setBalance(newBalance);
+    oss << atm_id << ": Account " << account_id << " new balance is " 
+    << newBalance << " after " << amount << " $ was withdrawn";
+    write_log(oss.str());
+    return SUCCESS;
+} 
+
+int bank::check_balance(int account_id, int password, int atm_id) {
+    if(account_id <= 0 || password <= 0)
+        return ERROR;
+
+    int index = getAccount_index(account_id);
+    ostringstream oss;
+
+    if(accounts[index].getPassword() != password){
+        oss << "Error " << atm_id << ": Your transaction failed - password for account id "
+        << account_id << " is incorrect";
+        write_log(oss.str());
+        return ERROR;   
+    }
+
+    double balance = accounts[index].getBalance();
+    oss << atm_id << ": Account " << account_id << " balance is " << balance;
+    write_log(oss.str());
+    return SUCCESS;
+}
+
+int bank::close_account(int account_id, int password, int atm_id) {
+    if(account_id <= 0 || password <= 0)
+        return ERROR;
+
+    int index = getAccount_index(account_id);
+    ostringstream oss;
+
+    if(accounts[index].getPassword() != password){
+        oss << "Error " << atm_id << ": Your transaction failed - password for account id "
+        << account_id << " is incorrect";
+        write_log(oss.str());
+        return ERROR;   
+    }
+
+    //TODO: to edit
+    accounts.erase(accounts.begin() + index);
+    oss << "Account " << account_id << " was closed";
+    write_log(oss.str());
+    return SUCCESS;
+    // until here
+}
+
+
 //int transfer(int from_account_id, int to_account_id, double amount);
 //int close_atm(int id); 
 

@@ -73,13 +73,13 @@ int ATM::execute(const vector<string>& args) {
     else if(args[0] == "D")
         return main_bank->deposit(stoi(args[1]), stoi(args[2]), stod(args[3]), this->id);
     else if(args[0] == "W")
-        return main_bank->withdraw(stoi(args[1]), stod(args[2]));
+        return main_bank->withdraw(stoi(args[1]), stoi(args[2]), stod(args[3]), this->id);
     else if(args[0] == "B")
-        return main_bank->check_balance(stoi(args[1]));
+        return main_bank->check_balance(stoi(args[1]), stoi(args[2]), this->id);
     else if(args[0] == "Q")
-        return main_bank->close_account(stoi(args[1]), stoi(args[2]));
+        return main_bank->close_account(stoi(args[1]), stoi(args[2]), this->id);
     else if(args[0] == "T")
-        return main_bank->transfer(stoi(args[1]), stoi(args[2]), stod(args[3]));
+        return main_bank->transfer(stoi(args[1]), stoi(args[2]), stod(args[3]), this->id);
     else if (args[0] == "C") 
         return main_bank->close_atm(stoi(args[1]));
     
