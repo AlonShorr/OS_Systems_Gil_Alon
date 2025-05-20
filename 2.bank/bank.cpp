@@ -2,9 +2,7 @@
 #include "bank.hpp"
 #include "logger.hpp"
 
-
-
-
+//ALON YOU ARE MY TRUE LOVE
 /*=============================================================================
     Helper Functions
 =============================================================================*/
@@ -17,39 +15,9 @@ bool account_exists(const vector<account>& accounts, int account_id) {
     return false;
 }
 
-    /*=============================================================================
-        bank Class Methods & others
-    =============================================================================*/
-
-//static rw_lock_t bank_lock;
-    static rw_lock_t bank_lock;
-
-    // create account class - need to kick to another file + fix functions
-    account() {
-        pthread_mutex_init(&lock, nullptr);
-    }
-
-    ~account() {
-        pthread_mutex_destroy(&lock);
-    }
-//-----------------------------------------------------
-
-
-void BANK::RUN(){
-    total_balance = 0;
-    init_rw_lock(&bank_lock);
-
-
-    //run bank as a thread, with loops for timing tax+printing
-
-
-
-
-    destroy_rw_lock(&bank_lock);
-}
-
-
-
+/*=============================================================================
+    bank Class Methods & others
+=============================================================================*/
 
 int BANK::get_random(int low, int high) {
     static std::random_device rd;   // Seed generator
@@ -142,12 +110,7 @@ int bank::getAccount_index(int id) {
     }
     return -1;
 }
-//TODO: to implement!
-/**
- * @brief: Bank functions to manage accounts
- * @return: 0 on success, 1 on failure
- */
- 
+
 int bank::open_new_account(int account_id, int password, double initial_balance, int atm_id) {
     ostringstream oss;
     if(account_id <= 0 || password <= 0 || initial_balance < 0) 
@@ -261,8 +224,6 @@ int main (int argc, char *argv[]) {
 
     close_log();
     destroy_rw_lock(&bank_lock);
-
-
     
     return 0;
 }
