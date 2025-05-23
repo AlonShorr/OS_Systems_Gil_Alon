@@ -1,6 +1,7 @@
 #include "includes.hpp"
 #include "account.hpp"
 using namespace std;
+extern int cm;
 
 /*=============================================================================
     Helper Functions

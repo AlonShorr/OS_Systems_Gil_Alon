@@ -3,6 +3,8 @@
 #include "bank.hpp"
 
 using namespace std;
+extern int cm;
+extern int thread_counter;
 
 /*=============================================================================
     Helper Functions
@@ -45,15 +47,25 @@ int ATM::get_id() {return id;}
 //double ATM::get_balance() {return balance;}                 
 //void ATM::set_balance(double amount) {balance = amount;}
 pthread_t ATM::get_thread() {return atm_thread;}
-void ATM::start() { pthread_create(&atm_thread, nullptr, runATM, this); }
+void ATM::start() { 
+    if(cm) printf("got into atm->start\n");
+    pthread_create(&atm_thread, nullptr, runATM, this); 
+    if(cm) printf("atm->start after pthread\n");
+}
 void ATM::join() { pthread_join(atm_thread, nullptr); }
 
 int ATM::run()
 {
+    if (cm) {printf("ATM started\n");}
     char buffer[128]; // line buffer
     int res = 0;
+    
+    // if (!input_file) {
+    //     printf("ERROR: input_file is NULL\n");
+    // }
     while (fgets(buffer, sizeof(buffer), input_file) != nullptr)
     {
+        if (cm) {printf("ATM read line: %s\n", buffer);}
         if (this->closed) // ATM was requested to stop
             break;        
         string line(buffer);
@@ -64,10 +76,12 @@ int ATM::run()
         usleep(100000);   // Sleep for 100 miliSeconds
     }
     thread_counter++; //global variable (Gil)
+    if (cm) {printf("ATM finished, thread counter is: %d\n", thread_counter);}
     return SUCCESS;
 }
 
 int ATM::execute(const vector<string>& args) {
+    if (cm) {printf("ATM execute\n");}
     if(args.empty()) return ERROR;
     sleep(1); 
     if (args[0] == "O")
@@ -90,6 +104,7 @@ int ATM::execute(const vector<string>& args) {
 
 void* ATM::runATM(void* arg) {
     ATM* atm = static_cast<ATM*>(arg);
+    if (cm) {printf("ATM started wrapper func\n");}
     atm->run();
     return nullptr;
 }

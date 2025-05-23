@@ -1,6 +1,7 @@
 #include "includes.hpp"
 #include "read_write_lock.hpp"
 using namespace std;
+extern int cm;
 
 void init_rw_lock(rw_lock_t* rw) {
     int res;
@@ -30,6 +31,7 @@ void reader_lock(rw_lock_t* rw) {
         cerr <<"Bank error: " << res << "failed";
         return;
     }
+    std::cout << "[Reader] waiting. Writers inside: " << rw->writers_inside << std::endl;
     while (rw->writers_inside > 0) {
         res = pthread_cond_wait(&rw->readers_ok, &rw->lock);
         if(res!= 0){
@@ -38,6 +40,7 @@ void reader_lock(rw_lock_t* rw) {
         }
     }
     rw->readers_inside++;
+    std::cout << "[Reader] acquired. Readers inside: " << rw->readers_inside << std::endl;
     res = pthread_mutex_unlock(&rw->lock);
     if(res!= 0){
         cerr <<"Bank error: " << res << "failed";

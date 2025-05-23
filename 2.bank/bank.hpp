@@ -7,8 +7,9 @@
 using namespace std;
 //global variables
 class ATM;
-int thread_counter = 0;
-double global_balance = 0;
+extern int thread_counter;
+extern double global_balance;
+extern int cm; //for debugging - if 1 we print everything to the screen
 
 class bank {
     private:

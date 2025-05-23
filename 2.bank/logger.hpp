@@ -4,7 +4,6 @@
 #include "includes.hpp"
 #include "read_write_lock.hpp"  // your module
 
-
 //static rw_lock_t log_lock;
 //static FILE* log_file = nullptr;
 

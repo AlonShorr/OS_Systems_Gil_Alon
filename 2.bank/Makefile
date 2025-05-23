@@ -2,16 +2,13 @@ CXX = g++
 CXXFLAGS = -std=c++11 -g -Wall -Werror -pedantic-errors -DDEBUG -pthread
 TARGET = bank
 
-SRCS = account.cpp atm.cpp bank.cpp logger.cpp read_write_lock.cpp
-OBJS = account.o atm.o bank.o logger.o read_write_lock.o
+SRCS = account.cpp atm.cpp logger.cpp read_write_lock.cpp bank.cpp
+OBJS = account.o atm.o logger.o read_write_lock.o bank.o
 
 all: $(TARGET)
 
 $(TARGET): $(OBJS)
 	$(CXX) $(CXXFLAGS) -o $@ $^
-
-bank.o: bank.cpp bank.hpp
-	$(CXX) $(CXXFLAGS) -c bank.cpp -o bank.o
 
 account.o: account.cpp account.hpp
 	$(CXX) $(CXXFLAGS) -c account.cpp -o account.o
@@ -24,6 +21,9 @@ logger.o: logger.cpp logger.hpp
 
 read_write_lock.o: read_write_lock.cpp read_write_lock.hpp
 	$(CXX) $(CXXFLAGS) -c read_write_lock.cpp -o read_write_lock.o
+
+bank.o: bank.cpp bank.hpp
+	$(CXX) $(CXXFLAGS) -c bank.cpp -o bank.o
 
 clean:
 	rm -f $(OBJS) $(TARGET)
