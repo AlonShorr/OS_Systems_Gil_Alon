@@ -1,5 +1,6 @@
 #include "includes.hpp"
 #include "atm.hpp"
+#include "bank.hpp"
 
 using namespace std;
 
@@ -30,8 +31,8 @@ vector<string> parse(const string& line) {
     ATM Class Methods
 =============================================================================*/
 
-ATM::ATM(int id, FILE *input_file, bank *bank, bool closed = false) : 
-    id(id), input_file(input_file), main_bank(bank), balance(0){};
+ATM::ATM(int id, FILE *input_file, bank *bank, bool closed) : 
+    id(id), input_file(input_file), main_bank(bank), closed(false){};
 
 ATM::~ATM() {
     if (input_file) {
@@ -41,8 +42,8 @@ ATM::~ATM() {
 }
 
 int ATM::get_id() {return id;}                
-double ATM::get_balance() {return balance;}                 
-void ATM::set_balance(double amount) {balance = amount;}
+//double ATM::get_balance() {return balance;}                 
+//void ATM::set_balance(double amount) {balance = amount;}
 pthread_t ATM::get_thread() {return atm_thread;}
 void ATM::start() { pthread_create(&atm_thread, nullptr, runATM, this); }
 void ATM::join() { pthread_join(atm_thread, nullptr); }
@@ -67,7 +68,7 @@ int ATM::run()
 }
 
 int ATM::execute(const vector<string>& args) {
-    if(args.empty()) return;
+    if(args.empty()) return ERROR;
     sleep(1); 
     if (args[0] == "O")
         return main_bank->open_new_account(stoi(args[1]), stoi(args[2]), stod(args[3]), this->id);
@@ -80,7 +81,7 @@ int ATM::execute(const vector<string>& args) {
     else if (args[0] == "Q")
         return main_bank->close_account(stoi(args[1]), stoi(args[2]), this->id);
     else if (args[0] == "T")
-        return main_bank->transfer(stoi(args[1]), stoi(args[2]), stod(args[3]), this->id);
+        return main_bank->transfer(stoi(args[1]), stoi(args[2]), stoi(args[3]), stod(args[4]), this->id);   
     else if (args[0] == "C") 
         return main_bank->close_atm(stoi(args[1]), this->id);
     

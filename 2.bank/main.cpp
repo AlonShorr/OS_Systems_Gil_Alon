@@ -1,4 +1,5 @@
-#include "includes.hpp"
+/*#
+include "includes.hpp"
 #include "atm.hpp"
 #include "bank.hpp"
 #include "logger.hpp" // TODO: think about include path
@@ -45,4 +46,4 @@ int main (int argc, char *argv[]) {
     
     return 0;
 }
-
+*/

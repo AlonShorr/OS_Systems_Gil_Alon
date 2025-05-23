@@ -16,6 +16,8 @@
 #include <cstdlib>       // for atoi(), rand(), srand()
 #include <ctime>         // for time(), for random seed and timestamps
 #include <random>        // for random number generation
+#include <chrono>
+#include <algorithm>
 
 #define ARGS_NUM_MAX 10
 #define ERROR 1

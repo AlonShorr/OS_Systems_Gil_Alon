@@ -1,31 +1,33 @@
 #ifndef ATM_H
 #define ATM_H
-
 #include "includes.hpp"
-#include "bank.hpp"
+using namespace std;
+
+class bank;
 
 class ATM {
     public:
         int id;                            
-        double balance;
-        bool closed;                     // Flag to indicate if the ATM is closed
+        //double balance;
         FILE* input_file;                // File pointer for ATM input file
         bank* main_bank;                 // Pointer to the main bank object
+        bool closed;                     // Flag to indicate if the ATM is closed
         pthread_t atm_thread;
 
         /**
          * @brief: ATM constructor and destructor
          */
-        ATM(int id, FILE* input_file, bank* bank, bool closed = false);        
+        ATM(int id, FILE* input_file, bank* bank, bool closed);
+               
         ~ATM();
 
         /**
          * @brief: getters and setters for ATM fields
          */
         int get_id();                       
-        double get_balance();                 
-        void set_balance(double amount);
-        pthread_t ATM::get_thread();
+        //double get_balance();                 
+        //void set_balance(double amount);
+        pthread_t get_thread();
 
         /**
          * @brief: funcions to manage ATM threads
@@ -35,14 +37,14 @@ class ATM {
          */
         void start();            
         void join();             
-        int run();                     // Main ATM logic (command execution)
+        int run();   // Main ATM logic (command execution)
 
         /**
          * @brief Execute the ATM command based on the parsed arguments.
          * @param args: a vector of strings containing the command and its arguments.
          * @return: 0 on success, 1 on failure.
          */
-        int ATM::execute(const vector<string> &args);
+        int execute(const vector<string> &args);
 
         /**
          * @brief runATM is a wrapper function for pthread library use

@@ -1,7 +1,9 @@
 #include "includes.hpp"
 #include "bank.hpp"
 #include "logger.hpp"
-
+#include "atm.hpp"
+#include "account.hpp"
+using namespace std;
 
 /*=============================================================================
     Helper Functions
@@ -28,13 +30,17 @@ int bank::get_random(int low, int high) {
 /*=============================================================================
     bank Class Methods & others
 =============================================================================*/
-bank::bank() : total_balance(0) {
+bank::bank() {
+    this->total_balance = 0;
     init_rw_lock(&bank_lock);
 }
 
 bank::~bank() {
     destroy_rw_lock(&bank_lock); 
 }
+
+void bank::set_bank_balance(double amount) {total_balance = amount;} //lock and unlock outside the func
+double bank::get_bank_balance(){return total_balance;} //lock and unlock outside the func
 
 void bank::tax() {  
     double need_to_pay = 0;
@@ -48,13 +54,14 @@ void bank::tax() {
     }
     reader_lock(&bank_lock); // Lock for reading - we dont want people to read while we still taxing untill we taxed all accounts  
     //write to log all taxes
-    for (const auto& acc : accounts) {
+    ostringstream oss;
+    for (auto& acc : accounts) {
         need_to_pay = acc.balance * tax_precent / 100;
+        global_balance += need_to_pay;
         acc.balance -= need_to_pay;
-        total_balance += need_to_pay;
-        sprintf(buffer, "Bank: commissions of %d %% were charged, bank gained %f from account %d",tax_precent, need_to_pay, acc.id);
-        write_log(std::string(buffer));
-        withdraw(acc.id, acc.password, need_to_pay);
+        //withdraw_tax(acc.id, acc.password, need_to_pay);
+        oss << "Bank: commissions of " << tax_precent << " % were charged, bank gained "<< need_to_pay <<" from account "<< acc.id;
+        write_log(oss.str()); //must be inside critical section - tax is atomic and we need to write so much different logs. we cant contain them all in different place. it will be fast tho, because everything is locked so the log write will be very fast.
     }
     //unlock cuz atomic + unlock bank for adding/deleting accounts
     reader_unlock(&bank_lock); // unLock for reading   
@@ -74,11 +81,16 @@ void bank::print_accounts(){
         writer_lock(&acc.account_lock);
     }
     //sort accounts by id - make a copy of our accounts vector
-    std::vector<Account*> sorted_accounts = accounts;
-    std::sort(sorted_accounts.begin(), sorted_accounts.end(), [](Account* a, Account* b) {return a->id < b->id;});
+    //std::vector<account*> sorted_accounts = accounts;
+    //std::sort(sorted_accounts.begin(), sorted_accounts.end(), [](account* a, account* b) {return a->id < b->id;});
+    
+    std::vector<account> sorted_accounts = accounts;
+    std::sort(sorted_accounts.begin(), sorted_accounts.end(), [](const account& a, const account& b) {
+        return a.id < b.id;
+    });
     //print all accounts
     std::cout << "Current Bank Status\n";
-    for (const auto acc : sorted_accounts) {
+    for (auto& acc : sorted_accounts) {
         std::cout << "Account " << acc.id << ": Balance - " << acc.balance << "$, Account Password - " << acc.password << "\n";
     }
     reader_lock(&bank_lock); //now we do care, we dont want readerd to reas while half deleted
@@ -86,9 +98,9 @@ void bank::print_accounts(){
         reader_lock(&acc.account_lock);
     }
     for (auto it = ATMs.begin(); it != ATMs.end(); ) {
-        if (it->closed()) { // ATM is marked closed
+        if (it->closed) { // ATM is marked closed
             pthread_join(it->get_thread(), nullptr); // Wait for thread to finish
-            it = ATMs.erase(it); // Erase returns the next valid iterator
+            //it = ATMs.erase(it); // Erase returns the next valid iterator
         }
         else {
             ++it;
@@ -107,11 +119,12 @@ int bank::open_new_account(int account_id, int password, double initial_balance,
     ostringstream oss;
     int index;
     if((index = getAccount_index(account_id)) != -1) {
-        writer_unlock(&accounts[index].account_lock)
+        writer_unlock(&accounts[index].account_lock);
         oss << "Error " << atm_id << ": Your transaction failed - account with the same id exists";
         write_log(oss.str());
         return ERROR;
     }
+    
     this->accounts.push_back(account(account_id, password, initial_balance)); 
     oss << atm_id << ": New account id is " << account_id
     << " with password " << password
@@ -143,6 +156,29 @@ int bank::deposit(int account_id, int account_password, double amount, int atm_i
     return SUCCESS;
 }
 
+// int bank::withdraw_tax(int account_id, int password, double need_to_pay) {
+//     int index = getAccount_index(account_id); //lock
+//     if(accounts[index].getPassword() != password){
+//         writer_unlock(&accounts[index].account_lock);
+//         oss << "Error " << atm_id << ": Your transaction failed - password for account id "
+//         << account_id << " is incorrect";
+//         write_log(oss.str());
+//         return ERROR;     
+//     }
+//     if(accounts[index].getBalance() < amount){
+//         writer_unlock(&accounts[index].account_lock);
+//         oss << "Error " << atm_id << ": Your transaction failed – account id "
+//         << account_id << " balance is lower than " << amount;
+//         write_log(oss.str());
+//         return ERROR;
+//     }
+//     double newBalance = accounts[index].getBalance() - need_to_pay;
+//     accounts[index].setBalance(newBalance);
+//     write_log(oss.str());
+//     return SUCCESS;
+// } 
+
+
 int bank::withdraw(int account_id, int password, double amount, int atm_id) {   
     ostringstream oss;
     int index = getAccount_index(account_id); //lock
@@ -155,7 +191,7 @@ int bank::withdraw(int account_id, int password, double amount, int atm_id) {
     }
     if(accounts[index].getBalance() < amount){
         writer_unlock(&accounts[index].account_lock);
-        oss << "Error " << atm_id << ": Your transaction failed – account id "
+        oss << "Error " << atm_id << ": Your transaction failed - account id "
         << account_id << " balance is lower than " << amount;
         write_log(oss.str());
         return ERROR;
@@ -221,13 +257,11 @@ int bank::close_account(int account_id, int password, int atm_id) {
     return SUCCESS;
 }
 
-int transfer(int from_account_id, int password, int to_account_id, double amount, int atm_id){   
-    ostringstream oss;
-    int from_new_amount;
-    int to_new_amount;  
+int bank::transfer(int from_account_id, int password, int to_account_id, double amount, int atm_id){   
+    ostringstream oss; 
     int from_index = getAccount_index(from_account_id); //lock account
     if(accounts[from_index].getPassword() != password){
-        writer_unlock(&accounts[from_index].read_write_lock);
+        writer_unlock(&accounts[from_index].account_lock);
         oss << "Error " << atm_id << ": Your transaction failed - password for account id "
         << from_account_id << " is incorrect";
         write_log(oss.str());
@@ -235,62 +269,76 @@ int transfer(int from_account_id, int password, int to_account_id, double amount
     }
     int to_index = getAccount_index(to_account_id); //lock account
     if(accounts[from_index].getBalance() < amount){
-        writer_unlock(&accounts[from_index].read_write_lock);
-        writer_unlock(&accounts[to_index].read_write_lock);       
+        writer_unlock(&accounts[from_index].account_lock);
+        writer_unlock(&accounts[to_index].account_lock);       
         oss << "Error " << atm_id << ": Your transaction failed - account id "
         << from_account_id << " is balance is lower than " << amount;
         write_log(oss.str());
         return ERROR;  
     }
     else{
-        reader_lock(&accounts[from_index].read_write_lock);
-        reader_lock(&accounts[to_index].read_write_lock);
+        reader_lock(&accounts[from_index].account_lock);
+        reader_lock(&accounts[to_index].account_lock);
         accounts[from_index].setBalance(accounts[from_index].getBalance()-amount);
         accounts[to_index].setBalance(accounts[to_index].getBalance()+amount);
         oss << atm_id << ": Transfer " << amount << " from account "
         << from_account_id << " to account " << to_account_id 
         << " new account balance is " << accounts[from_index].getBalance()
         << " new target account balance is " << accounts[to_index].getBalance(); //inside critical cuz using getBalance()
-        reader_unlock(&accounts[from_index].read_write_lock);
-        reader_unlock(&accounts[to_index].read_write_lock);
-        writer_unlock(&accounts[from_index].read_write_lock);
-        writer_unlock(&accounts[to_index].read_write_lock);
+        reader_unlock(&accounts[from_index].account_lock);
+        reader_unlock(&accounts[to_index].account_lock);
+        writer_unlock(&accounts[from_index].account_lock);
+        writer_unlock(&accounts[to_index].account_lock);
         write_log(oss.str());
         return SUCCESS; 
-    }  
+    }
+    return SUCCESS; 
 }
 
-int close_atm(int target_atm_id, int killer_atm_id){
+int bank::close_atm(int target_atm_id, int killer_atm_id){
     ostringstream oss;
-    bool is_in = false;  
+    int is_in = 0;
     for (auto it = ATMs.begin(); it != ATMs.end(); ) {
         if (it->id == target_atm_id) { // ATM is marked closed
-            it->closed = true;
-            is_in = true;
+            if (it->closed == true) {
+                oss << "Error " << killer_atm_id << ": Your close operation failed - ATM ID "
+                << target_atm_id << " is already in a closed state";
+                is_in = 2;
+            }
+            else {
+                it->closed = true;
+                is_in = 1;
+            }
         }
     }
-    if (is_in == true){
-        oss << "Error " << killer_atm_id << ": Your transaction failed – ATM ID " << target_atm_id << " does not exist";
+    if (is_in == 0){
+        oss << "Error " << killer_atm_id << ": Your transaction failed - ATM ID " << target_atm_id << " does not exist";
     }
-    else{
+    else if (is_in == 1){
         oss << "Bank: ATM " << killer_atm_id << " closed " << target_atm_id << " successfully";
-    }   
+    }
     write_log(oss.str());
+    return SUCCESS; 
 }
 
 
 
 int main (int argc, char *argv[]) {
+    // 0) Check inputs
+    if(argc < 2) {
+        cerr << "Bank error: illegal arguments" << endl;
+        return ERROR;
+    }
+
     const int atm_num = argc - 2;
     std::vector<FILE*> input_files(atm_num);
     init_log("log.txt");
-    int total_balance = 0;
 
     // 1) Loop through input files
     for (int i = 1; i < atm_num + 1; i++) {
         input_files[i] = fopen(argv[i], "r");
         if (input_files[i] == nullptr) {
-            std::cerr << "Error opening file: " << argv[i + 1] << std::endl; //TODO: remove before submission
+            cerr << "Bank error: illegal arguments" << endl; 
             close_log();
             for (int j = 0; j < i; ++j) {
                 fclose(input_files[j]);
@@ -308,37 +356,42 @@ int main (int argc, char *argv[]) {
     
     
     for (int i = 0; i < atm_num; i++) {
-        ATMs.emplace_back(i + 1, input_files[i], main_bank); // construct in-place
-        ATMs[i].start(); // call start on the constructed object
+        main_bank->ATMs.emplace_back(i + 1, input_files[i], main_bank, false); // construct in-place
+        main_bank->ATMs[i].start(); // call start on the constructed object
     }
 
     //2.5) start timer
-    auto start_time = steady_clock::now();
+    auto start_time = std::chrono::steady_clock::now();
     auto last_tax_time = start_time;
     auto last_print_time = start_time;
 
     // 3) Wait for all ATM threads to finish, while taxing and printing accounts
     while (true) {
-        auto now = steady_clock::now();
+        auto now = std::chrono::steady_clock::now();
+
+    
+    
         // Check if 0.5s passed since last print
-        if (duration_cast<milliseconds>(now - last_print_time).count() >= 500) {
-            print_accounts();
+        if (std::chrono::duration_cast<std::chrono::milliseconds>(now - last_print_time).count() >= 500) {
+            
             last_print_time = now;
+            main_bank->print_accounts();
         }
         // Check if 3s passed since last tax
-        if (duration_cast<seconds>(now - last_tax_time).count() >= 3) {
-            tax();
+        if (std::chrono::duration_cast<std::chrono::seconds>(now - last_tax_time).count() >= 3) {
             last_tax_time = now;
+            main_bank->tax();
+            main_bank->set_bank_balance(global_balance);
         }
 
         if (thread_counter == atm_num){
             for (int i = 0; i < atm_num; i++) {
-                ATMs[i]->join();
+                main_bank->ATMs[i].join();
             }
             break;
         }
         // PERHAPS DELETE - tiny sleep to avoid CPU spinning at 100%
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        usleep(1000);
     }
 
 
