@@ -10,7 +10,7 @@ class account {
         int id;                            // Account ID
         int password;                      // Account password
         double balance;                    // Account balance
-
+        bool closed;
         rw_lock_t account_lock;     // rw_lock for thread safety
 
         account(int id, int password, double balance);    // Constructor

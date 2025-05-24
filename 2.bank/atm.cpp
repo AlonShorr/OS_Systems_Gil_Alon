@@ -34,7 +34,7 @@ vector<string> parse(const string& line) {
 =============================================================================*/
 
 ATM::ATM(int id, FILE *input_file, bank *bank, bool closed) : 
-    id(id), input_file(input_file), main_bank(bank), closed(false){};
+    id(id), input_file(input_file), main_bank(bank), wanted_to_close(false), closed(false){};
 
 ATM::~ATM() {
     if (input_file) {
@@ -52,13 +52,12 @@ void ATM::start() {
     pthread_create(&atm_thread, nullptr, runATM, this); 
     if(cm) printf("atm->start after pthread\n");
 }
-void ATM::join() { pthread_join(atm_thread, nullptr); }
+void ATM::join() {pthread_join(atm_thread, nullptr); }
 
 int ATM::run()
 {
     if (cm) {printf("ATM started\n");}
     char buffer[128]; // line buffer
-    int res = 0;
     
     // if (!input_file) {
     //     printf("ERROR: input_file is NULL\n");
@@ -66,15 +65,16 @@ int ATM::run()
     while (fgets(buffer, sizeof(buffer), input_file) != nullptr)
     {
         if (cm) {printf("ATM read line: %s\n", buffer);}
-        if (this->closed) // ATM was requested to stop
-            break;        
+        if (this->closed){ // ATM was requested to stop
+            if (cm) {printf("ATM %d want to break, closed is %d\n", this->id, this->closed);}
+            break;
+        }        
         string line(buffer);
         vector<string> args = parse(line);
-        res = execute(args); // 1 second delay inside.
-        if (res == ERROR)
-            return ERROR; // Invalid command
+        execute(args); // 1 second delay inside.
         usleep(100000);   // Sleep for 100 miliSeconds
     }
+    if (cm) {printf("1111111111111111111111111111111111111111111111111111111111111111111111\n");}
     thread_counter++; //global variable (Gil)
     if (cm) {printf("ATM finished, thread counter is: %d\n", thread_counter);}
     return SUCCESS;

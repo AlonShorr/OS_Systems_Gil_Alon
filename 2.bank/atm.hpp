@@ -11,6 +11,7 @@ class ATM {
         //double balance;
         FILE* input_file;                // File pointer for ATM input file
         bank* main_bank;                 // Pointer to the main bank object
+        bool wanted_to_close;            // Flag to indicate if someone wants to close this ATM
         bool closed;                     // Flag to indicate if the ATM is closed
         pthread_t atm_thread;
 

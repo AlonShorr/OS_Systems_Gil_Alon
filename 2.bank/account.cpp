@@ -13,7 +13,7 @@ extern int cm;
 =============================================================================*/
 
 account::account(int id = 0, int password = 0, double balance = 0) : 
-    id(id), password(password), balance(balance) {
+    id(id), password(password), balance(balance), closed(false) {
     init_rw_lock(&account_lock);
 }
 account::~account() {
