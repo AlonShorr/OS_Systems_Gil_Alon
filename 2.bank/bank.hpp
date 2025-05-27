@@ -21,7 +21,9 @@ class bank {
         bank();
         ~bank();
     
-        int getAccount_index(int id);
+        int getAccount_index_read(int id);
+        int getAccount_index_write(int id);
+
         //bool createAccount(int id, int password, int balance);
         //bool deleteAccount(int id, int password);
         
