@@ -18,6 +18,8 @@
 #include <random>        // for random number generation
 #include <chrono>
 #include <algorithm>
+#include <memory>
+
 
 #define ARGS_NUM_MAX 10
 #define ERROR 1

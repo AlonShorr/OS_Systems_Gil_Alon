@@ -15,9 +15,9 @@ class bank {
     private:
         double total_balance;   // Total balance in the bank
     public:
-        vector<account> accounts;   // Indexed by account ID
-        vector<ATM> ATMs;           // List of ATMs
-        rw_lock_t bank_lock;       // Protects account creation/deletion
+        vector<account> accounts;       // Indexed by account ID
+        vector<unique_ptr<ATM>> ATMs;   // List of ATMs
+        rw_lock_t bank_lock;            // Protects account creation/deletion
         bank();
         ~bank();
     

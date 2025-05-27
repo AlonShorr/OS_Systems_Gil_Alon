@@ -138,11 +138,11 @@ void bank::print_accounts(){
     if (cm) {printf("in print_accounts want to close atms\n");}
     
     for (int i=0; i< static_cast<int>(ATMs.size()); i++) {
-        if (ATMs[i].wanted_to_close) { // ATM is marked closed
-            ATMs[i].closed = true;
-            if (cm) {printf("in print_accounts found atm to close %d\n",ATMs[i].id);}
+        if (ATMs[i]->wanted_to_close) { // ATM is marked closed
+            ATMs[i]->closed = true;
+            if (cm) {printf("in print_accounts found atm to close %d\n",ATMs[i]->id);}
             //int res =
-            pthread_join(ATMs[i].get_thread(), nullptr); // Wait for thread to finish
+            pthread_join(ATMs[i]->get_thread(), nullptr); // Wait for thread to finish
             //if (res != 0) {
             //    errno = res;
             //    perror("Bank error");
@@ -427,15 +427,15 @@ int bank::close_atm(int target_atm_id, int killer_atm_id){
     int is_in = 0;
     //for (auto it = ATMs.begin(); it != ATMs.end(); ) {
     for (int i=0; i< static_cast<int>(ATMs.size()); i++) {
-        if (ATMs[i].id == target_atm_id) { // ATM is marked closed
-            if (ATMs[i].closed == true) {
+        if (ATMs[i]->id == target_atm_id) { // ATM is marked closed
+            if (ATMs[i]->closed == true) {
                 if (cm) {printf("in close_atm found atm that was already closed %d\n",target_atm_id);}
                 oss << "Error " << killer_atm_id << ": Your close operation failed - ATM ID "
                 << target_atm_id << " is already in a closed state";
                 is_in = 2;
             }
             else {
-                ATMs[i].wanted_to_close = true;
+                ATMs[i]->wanted_to_close = true;
                 is_in = 1;
             }
         }
@@ -490,18 +490,14 @@ int main (int argc, char *argv[]) {
 
     // 2) Create the main bank object, ATM list and threads
     bank* main_bank = new bank();
-    
-    //put inside constractor:
-        //std::vector<ATM *> ATMs(atm_num);
-        //init_rw_lock(&bank_lock);
-    
+
     if (cm) {printf("created bank\n");}
 
     main_bank->ATMs.reserve(atm_num); // for preventing accessing freed memory
     for (int i = 0; i < atm_num; i++) {
         if (cm) {printf("created ATM\n");}
-        main_bank->ATMs.emplace_back(i + 1, input_files[i], main_bank, false); // construct in-place
-        main_bank->ATMs[i].start(); // call start on the constructed object
+    main_bank->ATMs.emplace_back(std::unique_ptr<ATM>(new ATM(i + 1, input_files[i], main_bank, false)));
+        main_bank->ATMs[i]->start(); // call start on the constructed object
     }
     if (cm) {printf("inisialized bank\n");}
 
@@ -514,17 +510,12 @@ int main (int argc, char *argv[]) {
     // 3) Wait for all ATM threads to finish, while taxing and printing accounts
     while (true) {
         auto now = std::chrono::steady_clock::now();
-
-    
-        //if (cm) {printf("started while\n");}
-
         // Check if 0.5s passed since last print
         if (std::chrono::duration_cast<std::chrono::milliseconds>(now - last_print_time).count() >= 500) {
             if (cm) {printf("in print\n");}
             last_print_time = now;
             main_bank->print_accounts();
         }
-        //if (cm) {printf("after print\n");}
 
         // Check if 3s passed since last tax
         if (std::chrono::duration_cast<std::chrono::seconds>(now - last_tax_time).count() >= 3) {
@@ -533,11 +524,10 @@ int main (int argc, char *argv[]) {
             main_bank->tax();
             main_bank->set_bank_balance(global_balance);
         }
-        //if (cm) {printf("after tax\n");}
-        //if (cm) {printf("thread counter = %d, atm_num = %d\n",thread_counter, atm_num);}
+
         if (thread_counter == atm_num){
             for (int i = 0; i < atm_num; i++) {
-                main_bank->ATMs[i].join();
+                main_bank->ATMs[i]->join();
             }
             break;
         }
@@ -548,14 +538,7 @@ int main (int argc, char *argv[]) {
 
 
     // 4) Clean up memory and close files
-    
     delete main_bank;
-    //inside destructor:    
-        //for (int i = 0; i < atm_num; ++i) {
-        //    delete ATMs[i]; // the files are closed in the d'tor
-        //}
-        //destroy_rw_lock(&bank_lock);
-    
     close_log();
     if (cm) {printf("ending...\n");}
 
