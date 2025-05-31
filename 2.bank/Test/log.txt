@@ -1,0 +1,14 @@
+1: New account id is 10098 with password 1029 and initial balance 960
+2: New account id is 10009 with password 1095 and initial balance 80
+3: New account id is 10003 with password 1058 and initial balance 600
+4: New account id is 10072 with password 1044 and initial balance 210
+1: Account 10098 is now closed. Balance was 960
+2: Account 10009 balance is 80
+3: Account 10003 new balance is 320 after 280 $ was withdrawn
+4: Account 10072 balance is 210
+Bank: commissions of 4 % were charged, bank gained 12.8 from account 10003
+Bank: commissions of 4 % were charged, bank gained 3.2 from account 10009
+Bank: commissions of 4 % were charged, bank gained 8.4 from account 10072
+3: Account 10003 is now closed. Balance was 307.2
+Bank: ATM 2 closed 4 successfully
+Error 4: Your transaction failed - account id 10072 balance is lower than 210
