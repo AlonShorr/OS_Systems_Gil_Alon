@@ -11,6 +11,11 @@ int cm = 0; //for debugging - if 1 we print everything to the screen
 /*=============================================================================
     Helper Functions
 =============================================================================*/
+/**
+ * @brief: locks when finds account that is not closed and returns it's index
+ *         if the account is closed - remains unlocked
+ *         if it returns -1, no account has been locked
+ */
 int bank::getAccount_index_read(int id) {
    for (size_t i = 0; i < accounts.size(); ++i) {
         reader_lock(&accounts[i].account_lock);
@@ -24,6 +29,11 @@ int bank::getAccount_index_read(int id) {
     return -1;
 }
 
+/**
+ * @brief: locks when finds account that is not closed and returns it's index
+ *         if the account is closed - remains unlocked
+ *         if it returns -1, no account has been locked
+ */
 int bank::getAccount_index_write(int id) {
    for (size_t i = 0; i < accounts.size(); ++i) {
         writer_lock(&accounts[i].account_lock);
@@ -142,7 +152,7 @@ void bank::print_accounts(){
             ATMs[i]->closed = true;
             if (cm) {printf("in print_accounts found atm to close %d\n",ATMs[i]->id);}
             //int res =
-            pthread_join(ATMs[i]->get_thread(), nullptr); // Wait for thread to finish
+            //pthread_join(ATMs[i]->get_thread(), nullptr); // Wait for thread to finish
             //if (res != 0) {
             //    errno = res;
             //    perror("Bank error");
@@ -196,9 +206,11 @@ int bank::deposit(int account_id, int account_password, double amount, int atm_i
     reader_unlock(&bank_lock);
 
     if(index == -1) {
-        printf("account not exists\n");
+        oss << "Error " << atm_id << ": Your transaction failed - account id " << account_id << " does not exist";
+        write_log(oss.str());
         return ERROR;
     }
+    
     if(accounts[index].getPassword() != account_password){
         writer_unlock(&accounts[index].account_lock);
         oss << "Error " << atm_id << ": Your transaction failed - password for account id "
@@ -232,9 +244,11 @@ int bank::withdraw(int account_id, int password, double amount, int atm_id) {
     reader_unlock(&bank_lock);
 
     if(index == -1) {
-        printf("account not exists\n");
+        oss << "Error " << atm_id << ": Your transaction failed - account id " << account_id << " does not exist";
+        write_log(oss.str());
         return ERROR;
     }
+    
     if(accounts[index].getPassword() != password){
         writer_unlock(&accounts[index].account_lock);
         oss << "Error " << atm_id << ": Your transaction failed - password for account id "
@@ -242,6 +256,7 @@ int bank::withdraw(int account_id, int password, double amount, int atm_id) {
         write_log(oss.str());
         return ERROR;     
     }
+    
     if(accounts[index].getBalance() < amount){
         writer_unlock(&accounts[index].account_lock);
         oss << "Error " << atm_id << ": Your transaction failed - account id "
@@ -272,11 +287,12 @@ int bank::check_balance(int account_id, int password, int atm_id) {
     int index = getAccount_index_read(account_id); //read lock
     reader_unlock(&bank_lock);
 
-
     if(index == -1) {
-        printf("account not exists\n");
+        oss << "Error " << atm_id << ": Your transaction failed - account id " << account_id << " does not exist";
+        write_log(oss.str());
         return ERROR;
     }
+    
     if(accounts[index].getPassword() != password){
         reader_unlock(&accounts[index].account_lock);
         oss << "Error " << atm_id << ": Your transaction failed - password for account id "
@@ -306,9 +322,11 @@ int bank::close_account(int account_id, int password, int atm_id) {
     reader_unlock(&bank_lock);
 
     if(index == -1) {
-        printf("account not exists\n");
+        oss << "Error " << atm_id << ": Your transaction failed - account id " << account_id << " does not exist";
+        write_log(oss.str());
         return ERROR;
     }
+    
     if(accounts[index].getPassword() != password){
         writer_unlock(&accounts[index].account_lock);
         oss << "Error " << atm_id << ": Your transaction failed - password for account id "
@@ -337,19 +355,28 @@ int bank::transfer(int from_account_id, int password, int to_account_id, double 
     ostringstream oss; 
     int from_index;
     int to_index;
-
+    bool to_be_like_horaot = false;
     reader_lock(&bank_lock);    
     if (from_account_id > to_account_id) { // swap if needed in order to avoid deadlock
         to_index = getAccount_index_write(to_account_id); //lock account
         if(to_index == -1) {
+            oss << "Error " << atm_id << ": Your transaction failed - account id " << to_account_id << " does not exist";
             reader_unlock(&bank_lock);
-            printf("Destination account not exists\n");
-            return ERROR;
+            to_be_like_horaot = true;
+            //printf("Destination account not exists\n");
+            //return ERROR;
         }
         from_index = getAccount_index_write(from_account_id); //lock account
         reader_unlock(&bank_lock);
         if(from_index == -1) {
-            printf("Source account not exists\n");
+            oss.clear();
+            oss << "Error " << atm_id << ": Your transaction failed - account id " << from_account_id << " does not exist";
+            write_log(oss.str());
+            //printf("Source account not exists\n");
+            return ERROR;
+        }
+        if (to_be_like_horaot){
+            write_log(oss.str());
             return ERROR;
         }
         if(accounts[from_index].getPassword() != password){
@@ -366,23 +393,33 @@ int bank::transfer(int from_account_id, int password, int to_account_id, double 
         from_index = getAccount_index_write(from_account_id); //lock account
         if(from_index == -1) {
             reader_unlock(&bank_lock);
-            printf("Source account not exists\n");
+            oss << "Error " << atm_id << ": Your transaction failed - account id " << from_account_id << " does not exist";
+            write_log(oss.str());
+            //printf("Source account not exists\n");
             return ERROR;
         }
+        
+        to_index = getAccount_index_write(to_account_id); //lock account
+        if(to_index == -1) {
+            reader_unlock(&bank_lock);
+            //printf("Destination account not exists\n");
+            oss << "Error " << atm_id << ": Your transaction failed - account id " << to_account_id << " does not exist";
+            write_log(oss.str());
+            return ERROR;
+        }
+        
+        reader_unlock(&bank_lock);
         if(accounts[from_index].getPassword() != password){
             writer_unlock(&accounts[from_index].account_lock);
-            reader_unlock(&bank_lock);
             oss << "Error " << atm_id << ": Your transaction failed - password for account id "
             << from_account_id << " is incorrect";
             write_log(oss.str());
             return ERROR;   
         }
-        to_index = getAccount_index_write(to_account_id); //lock account
-        reader_unlock(&bank_lock);
-        if(to_index == -1) {
-            printf("Destination account not exists\n");
-            return ERROR;
-        }
+
+
+
+
     } 
     if(accounts[from_index].getBalance() < amount){
         if (from_account_id > to_account_id) { // swap if needed in order to avoid deadlock
@@ -440,9 +477,9 @@ int bank::close_atm(int target_atm_id, int killer_atm_id){
             }
         }
     }
+    
     if (is_in == 0){
         if (cm) {printf("in close_atm atm dont exist\n");}
-
         oss << "Error " << killer_atm_id << ": Your transaction failed - ATM ID " << target_atm_id << " does not exist";
     }
     else if (is_in == 1){

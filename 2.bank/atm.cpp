@@ -62,21 +62,32 @@ int ATM::run()
     // if (!input_file) {
     //     printf("ERROR: input_file is NULL\n");
     // }
-    while (fgets(buffer, sizeof(buffer), input_file) != nullptr)
+
+    // bail out immediately if the bank asked us to die
+                        // EOF or read error → done
+
+    // … the rest exactly as you have …
+
+    while (true)
     {
-        if (cm) {printf("ATM read line: %s\n", buffer);}
-        if (this->closed){ // ATM was requested to stop
-            if (cm) {printf("ATM %d want to break, closed is %d\n", this->id, this->closed);}
+        if (this->wanted_to_close || this->closed)
             break;
-        }        
+
+        if (!fgets(buffer, sizeof(buffer), input_file))
+            break;
+        
+        if (cm) {printf("ATM read line: %s\n", buffer);}
+        /*if (this->closed){ // ATM was requested to stop
+        if (cm) {printf("ATM %d want to break, closed is %d\n", this->id, this->closed);}
+            break;
+        }   */     
         string line(buffer);
         vector<string> args = parse(line);
         execute(args); // 1 second delay inside.
         usleep(100000);   // Sleep for 100 miliSeconds
     }
-    if (cm) {printf("1111111111111111111111111111111111111111111111111111111111111111111111\n");}
     thread_counter++; //global variable (Gil)
-    if (cm) {printf("ATM finished, thread counter is: %d\n", thread_counter);}
+    closed = true; 
     return SUCCESS;
 }
 
