@@ -34,7 +34,7 @@ vector<string> parse(const string& line) {
 =============================================================================*/
 
 ATM::ATM(int id, FILE *input_file, bank *bank, bool closed) : 
-    id(id), input_file(input_file), main_bank(bank), wanted_to_close(false), closed(false){};
+    id(id), input_file(input_file), main_bank(bank), wanted_to_close(false), closed(false){}
 
 ATM::~ATM() {
     if (input_file) {
