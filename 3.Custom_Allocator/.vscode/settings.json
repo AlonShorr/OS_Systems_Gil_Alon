@@ -1,0 +1,5 @@
+{
+    "files.associations": {
+        "customallocator.h": "c"
+    }
+}
