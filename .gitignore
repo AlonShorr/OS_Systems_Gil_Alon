@@ -1,0 +1,25 @@
+
+# --- portfolio cleanup ---
+# Build artifacts
+*.o
+*.obj
+*.out
+*.exe
+
+# Archives / Windows metadata
+*.zip
+*:Zone.Identifier
+
+# Generated logs
+*.log
+
+# Common build folders
+build/
+cmake-build-*/
+out/
+dist/
+
+# Repo-specific generated binaries
+1.Smash/smash
+2.bank/Test/bank
+3.Custom_Allocator/main
