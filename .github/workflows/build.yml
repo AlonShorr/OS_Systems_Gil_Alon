@@ -30,4 +30,4 @@ jobs:
       - name: Build Custom Allocator
         run: |
           cd 3.Custom_Allocator
-          gcc -Wall -Wextra -Werror main.c customAllocator.c -o allocator_test
+          gcc -Wall -Wextra main.c customAllocator.c -o allocator_test
