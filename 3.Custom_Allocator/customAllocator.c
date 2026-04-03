@@ -56,7 +56,8 @@ Block* find_free_place(size_t size){
     Block *prev = NULL;
     if (current!=NULL){
         // gap befor first block
-        if ((char*)current - (char*)heap_start >= size + sizeof(Block)) {
+        size_t gap_from_start = (size_t)((char*)current - (char*)heap_start);
+        if (gap_from_start >= size + sizeof(Block)) {
             Block *new_block = (Block*)heap_start;
             new_block->size = size; // Update the size
             new_block->next = current; // Ensure next points to the first block
@@ -69,7 +70,8 @@ Block* find_free_place(size_t size){
     }
     // go over the list to find a free block
     while (current != NULL) {
-        if ((char*)current - ((char*)prev + sizeof(Block) + prev->size) >= size + sizeof(Block)) {
+        size_t gap_from_prev = (size_t)((char*)current - ((char*)prev + sizeof(Block) + prev->size));
+        if (gap_from_prev >= size + sizeof(Block)) {
             // Found a free block with enough size
             Block *new_block = (Block*)((char*)prev + sizeof(Block) + prev->size);
             new_block->size = size; // Update the size
