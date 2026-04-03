@@ -6,3 +6,11 @@ A collection of systems programming projects in C/C++, focused on process manage
 - Smash shell — mini Unix shell with job control and signal handling
 - Concurrent bank simulator — multithreaded ATM/bank system with synchronization primitives
 - Custom allocator — malloc/free-style allocator using sbrk/brk
+  
+## Build
+Each project can be built separately:
+
+### Smash
+```bash
+cd 1.Smash
+make
